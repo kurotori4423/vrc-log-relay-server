@@ -119,6 +119,22 @@ export interface ParsedLogData {
   confidence: number;
 }
 
+/**
+ * ログメタデータ（ファイル情報など）
+ */
+export interface LogMetadata {
+  /** ログソース */
+  source: LogSource;
+  /** ファイルパス */
+  filePath: string;
+  /** ファイル名 */
+  fileName: string;
+  /** タイムスタンプ */
+  timestamp: number;
+  /** ファイル内行番号 */
+  lineNumber?: number;
+}
+
 // =============================================================================
 // WebSocket通信関連の型定義
 // =============================================================================
