@@ -1,0 +1,55 @@
+# VRChat Log Relay Server - プロダクション環境設定
+# default.yaml の設定をオーバーライドするプロダクション環境固有設定
+
+# プロダクション用サーバー設定
+server:
+  port: 3000                    # プロダクション用ポート
+
+# プロダクション用ログ設定
+logging:
+  level: "info"                 # 必要最小限のログレベル
+  console:
+    enabled: false              # コンソール出力無効
+    colorize: false
+  file:
+    enabled: true               # ファイル出力有効
+    filename: "logs/server.log"
+    maxSize: "50mb"             # 大きなファイルサイズ
+    maxFiles: 10                # 多くのファイルを保持
+  errorFile:
+    enabled: true               # エラーログ分離
+    filename: "logs/error.log"
+
+# パフォーマンス最適化
+performance:
+  memory:
+    maxHeapSize: "128m"         # メモリ制限
+    gcThreshold: 0.7            # 少し早めのGC
+  processing:
+    maxConcurrentTasks: 20      # より多くの同時タスク
+    taskTimeout: 60000          # より長いタイムアウト
+    messageQueueSize: 2000      # 大きなキューサイズ
+
+# WebSocket設定（プロダクション最適化）
+websocket:
+  maxClients: 50                # 最大クライアント数
+  pingInterval: 60000           # 長いPing間隔（60秒）
+  pongTimeout: 15000            # 長いPongタイムアウト
+  distributionBatch:
+    enabled: true
+    batchSize: 20               # 大きなバッチサイズ
+    batchTimeout: 100           # 少し長いバッチタイムアウト
+
+# ヘルスチェック設定（プロダクション）
+healthCheck:
+  enabled: true
+  interval: 60000               # 長いチェック間隔（60秒）
+  timeout: 10000                # 長いタイムアウト
+
+# 機能設定（プロダクション）
+features:
+  webUI: true
+  healthCheck: true
+  metrics: true
+  authentication: false         # 認証は無効のまま
+  rateLimit: false              # レート制限も無効のまま

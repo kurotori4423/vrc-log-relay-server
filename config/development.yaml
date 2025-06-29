@@ -1,0 +1,41 @@
+# VRChat Log Relay Server - 開発環境設定
+# default.yaml の設定をオーバーライドする開発環境固有設定
+
+# 開発環境用サーバー設定
+server:
+  port: 3000                    # 開発用ポート
+
+# 開発環境用ログ設定
+logging:
+  level: "debug"                # 詳細ログレベル
+  console:
+    enabled: true
+    colorize: true              # カラー表示有効
+    format: "text"              # 人間が読みやすい形式
+  file:
+    enabled: false              # ファイル出力無効（開発時）
+
+# VRChat設定（開発用調整）
+vrchat:
+  processMonitoring:
+    interval: 3000              # より頻繁にチェック（3秒）
+  monitoring:
+    groupPeriod: 10             # 短いグループ期間（テスト用）
+
+# WebSocket設定（開発用調整）
+websocket:
+  port: 8080
+  maxClients: 10                # 開発時は少なめ
+  pingInterval: 15000           # より頻繁なPing（15秒）
+
+# 機能設定（開発用）
+features:
+  webUI: true
+  healthCheck: true
+  metrics: true
+
+# Web UI設定（開発用）
+webUI:
+  development:
+    hotReload: true             # 開発時はホットリロード有効
+    devServer: true             # 開発サーバー併用

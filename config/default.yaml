@@ -1,0 +1,160 @@
+# VRChat Log Relay Server - デフォルト設定
+# すべての設定項目のベースライン値を定義
+
+# サーバー基本設定
+server:
+  port: 3000                    # HTTP サーバーポート
+  host: "127.0.0.1"            # バインドアドレス（ローカルのみ）
+  name: "VRChat Log Relay Server"
+  version: "1.0.0"
+
+# VRChat関連設定
+vrchat:
+  # ログディレクトリ（null = 自動検出）
+  logDirectory: null
+  
+  # ファイル監視設定
+  monitoring:
+    groupPeriod: 30             # ファイルグループ期間（秒）
+    maxFiles: 4                 # 最大同時監視ファイル数
+    filePattern: "^output_log_(\\d{4})-(\\d{2})-(\\d{2})_(\\d{2})-(\\d{2})-(\\d{2})\\.txt$"
+    encoding: "utf8"            # ファイルエンコーディング
+  
+  # プロセス監視設定
+  processMonitoring:
+    enabled: true               # VRChatプロセス監視有効
+    interval: 5000              # 監視間隔（ミリ秒）
+    processName: "VRChat.exe"   # 監視対象プロセス名
+    retryLimit: 3               # 検出失敗時のリトライ数
+    detectionTimeout: 10000     # 検出タイムアウト（ミリ秒）
+  
+  # ディレクトリ監視設定
+  directoryMonitoring:
+    enabled: true               # ディレクトリ監視有効
+    depth: 1                    # 監視階層
+    usePolling: false           # ポーリング使用（通常false）
+    pollInterval: 1000          # ポーリング間隔（usePolling=true時）
+
+# WebSocket設定
+websocket:
+  port: 8080                    # WebSocketサーバーポート
+  host: "127.0.0.1"            # バインドアドレス（ローカルのみ）
+  
+  # 接続管理
+  maxClients: 50                # 最大同時接続数
+  pingInterval: 30000           # Ping間隔（ミリ秒）
+  pongTimeout: 10000            # Pong応答タイムアウト
+  
+  # パフォーマンス設定
+  compression: false            # 圧縮無効（ローカル通信）
+  perMessageDeflate: false      # メッセージ単位圧縮無効
+  maxPayload: 1048576           # 最大ペイロードサイズ（1MB）
+  
+  # 配信設定
+  distributionBatch:
+    enabled: true               # バッチ配信有効
+    batchSize: 10               # バッチサイズ
+    batchTimeout: 50            # バッチタイムアウト（ミリ秒）
+  
+  # ステータス配信
+  statusBroadcast:
+    enabled: true               # 状態変更自動配信
+    debounceInterval: 1000      # 状態変更のデバウンス間隔
+
+# ログ設定
+logging:
+  # 基本設定
+  level: "info"                 # ログレベル: debug, info, warn, error
+  format: "json"                # フォーマット: json, text
+  timestamp: true               # タイムスタンプ付与
+  
+  # 出力先設定
+  console:
+    enabled: true               # コンソール出力有効
+    colorize: true              # 色付け有効
+    format: "text"              # コンソール用フォーマット
+  
+  file:
+    enabled: true               # ファイル出力有効
+    filename: "logs/server.log" # ログファイルパス
+    maxSize: "10mb"             # 最大ファイルサイズ
+    maxFiles: 5                 # 保持ファイル数
+    datePattern: "YYYY-MM-DD"   # 日付パターン
+    zippedArchive: true         # 古いファイルの圧縮
+  
+  # エラーログ分離
+  errorFile:
+    enabled: true               # エラーログ分離有効
+    filename: "logs/error.log"  # エラーログファイル
+    level: "error"              # エラーレベル以上
+  
+  # 詳細ログ設定
+  categories:
+    server: "info"              # サーバー関連
+    vrchat: "info"              # VRChat監視関連
+    websocket: "info"           # WebSocket関連
+    messages: "debug"           # メッセージ処理関連
+
+# 機能有効/無効設定
+features:
+  webUI: true                   # Web管理UI有効
+  healthCheck: true             # ヘルスチェック有効
+  metrics: true                 # メトリクス収集有効
+  authentication: false         # 認証機能（無効）
+  rateLimit: false              # レート制限（無効）
+  
+  # VRChat監視機能詳細
+  vrchatMonitoring:
+    processDetection: true      # プロセス検知
+    directoryWatching: true     # ディレクトリ監視
+    fileWatching: true          # ファイル監視
+    statusNotification: true    # 状態通知
+
+# パフォーマンス設定
+performance:
+  # メモリ制限
+  memory:
+    maxHeapSize: "128m"         # 最大ヒープサイズ
+    gcThreshold: 0.8            # GC実行閾値
+  
+  # 処理制限
+  processing:
+    maxConcurrentTasks: 10      # 最大同時タスク数
+    taskTimeout: 30000          # タスクタイムアウト
+    messageQueueSize: 1000      # メッセージキューサイズ
+  
+  # ファイル監視最適化
+  fileWatching:
+    stabilityThreshold: 100     # ファイル安定判定時間
+    pollInterval: 100           # ポーリング間隔
+    useNativeEvents: true       # ネイティブイベント使用
+
+# ヘルスチェック設定
+healthCheck:
+  enabled: true                 # ヘルスチェック有効
+  endpoint: "/health"           # エンドポイントパス
+  interval: 30000               # チェック間隔
+  timeout: 5000                 # チェックタイムアウト
+  
+  # チェック項目
+  checks:
+    memoryUsage: true           # メモリ使用量チェック
+    vrchatProcess: true         # VRChatプロセスチェック
+    logDirectory: true          # ログディレクトリチェック
+    websocketServer: true       # WebSocketサーバーチェック
+  
+  # しきい値
+  thresholds:
+    memoryUsagePercent: 90      # メモリ使用率警告値
+    responseTimeMs: 1000        # 応答時間警告値
+
+# Web UI設定
+webUI:
+  enabled: true                 # Web UI有効
+  path: "/admin"               # アクセスパス
+  staticFiles: "web-ui/dist"   # 静的ファイルパス
+  
+  # 開発モード設定
+  development:
+    hotReload: false            # ホットリロード（通常無効）
+    devServer: false            # 開発サーバー併用

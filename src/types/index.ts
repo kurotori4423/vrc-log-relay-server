@@ -337,3 +337,6 @@ export type StatusChangeHandler = EventHandler<{
   current: VRChatStatus;
   processInfo?: VRChatProcessInfo;
 }>;
+
+// 設定関連の型定義をエクスポート
+export * from './config';
