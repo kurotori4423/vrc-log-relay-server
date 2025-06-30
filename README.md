@@ -32,7 +32,7 @@ VRChatのログファイルをリアルタイムで監視し、WebSocketを通�
 graph TD
     VRChat[VRChat] -->|ログファイル出力| LogFiles[Log Files]
     LogFiles -->|監視・解析| RelayServer[Log Relay Server]
-    RelayServer -->|配信| Clients[WebSocket Clients]
+    RelayServer -->|WebSocket| Clients[WebSocket Clients]
 ```
 
 ## インストールと実行方法
