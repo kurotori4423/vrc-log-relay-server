@@ -2,6 +2,8 @@
 
 このドキュメントは、VRChat Log Relay ServerからWebSocket経由でデータを受信するクライアントアプリケーションを作成する方法について説明します。
 
+**最終更新**: 2025年6月30日（データ構造仕様変更に対応）
+
 ## 1. 接続情報
 
 - **エンドポイントURL**: `ws://127.0.0.1:8080`
@@ -38,22 +40,93 @@
 {
   "type": "log_message",
   "data": {
-    "source": "VRChatLog",
-    "timestamp": 1678886400000,
-    "level": "info",
-    "message": "User joined: VRCUser",
+    "id": "msg-1725012345-abc123def",
+    "raw": {
+      "timestamp": "2025-06-30T15:00:00.000Z",
+      "level": "info",
+      "content": "OnPlayerJoined VRCUser (usr_12345678-1234-1234-1234-123456789abc)",
+      "fileName": "output_log_2025-06-30_14-30-00.txt",
+      "lineNumber": 1234
+    },
     "parsed": {
       "type": "user_join",
-      "data": { "username": "VRCUser" }
+      "data": {
+        "userName": "VRCUser",
+        "userId": "usr_12345678-1234-1234-1234-123456789abc",
+        "timestamp": 1725012345000
+      }
     },
-    "raw": "2025.06.30 15:00:00 Log        -  [Behaviour] User joined: VRCUser"
+    "tags": ["level:info", "type:user_join"],
+    "processedAt": "2025-06-30T15:00:00.123Z"
+  },
+  "timestamp": 1725012345123
+}
+```
+
+- `data.id`: メッセージの一意識別子
+- `data.raw`: 解析前の生ログ情報
+  - `timestamp`: ログファイルに記録されたタイムスタンプ
+  - `level`: ログレベル (`info`, `warning`, `error`, `debug`)
+  - `content`: VRChatが出力した実際のログ内容
+  - `fileName`: ログファイル名
+  - `lineNumber`: ファイル内の行番号
+- `data.parsed`: サーバーがログの内容を解析した結果（VRChatの特定イベントのみ）
+  - `type`: イベントタイプ (`user_join`, `user_leave`, `world_change`, `other`)
+  - `data`: 解析されたデータ（イベントタイプによって内容が異なる）
+- `data.tags`: フィルタリング用のタグ配列
+- `data.processedAt`: サーバーでの処理完了時刻
+
+##### 解析済みデータの詳細
+
+VRChatの特定イベントが検出された場合、`parsed` フィールドに以下の構造でデータが格納されます。
+
+**ユーザー参加 (`user_join`)**
+```json
+{
+  "type": "user_join",
+  "data": {
+    "userName": "VRCUser",
+    "userId": "usr_12345678-1234-1234-1234-123456789abc",
+    "timestamp": 1725012345000
   }
 }
 ```
 
-- `data.message`: 整形されたログメッセージ。
-- `data.parsed`: サーバーがログの内容を解析した結果。`type` に `user_join`, `user_leave`, `world_change` などが入り、詳細が `data` に格納されます。
-- `data.raw`: 加工されていない、ファイルに書き込まれたままのログ文字列。
+**ユーザー退出 (`user_leave`)**
+```json
+{
+  "type": "user_leave",
+  "data": {
+    "userName": "VRCUser",
+    "userId": "usr_12345678-1234-1234-1234-123456789abc",
+    "timestamp": 1725012345000
+  }
+}
+```
+
+**ワールド変更 (`world_change`)**
+```json
+{
+  "type": "world_change",
+  "data": {
+    "worldId": "wrld_12345678-1234-1234-1234-123456789abc",
+    "userId": "usr_12345678-1234-1234-1234-123456789abc",
+    "region": "jp",
+    "instance": 12345,
+    "timestamp": 1725012345000
+  }
+}
+```
+
+**その他のログ (`other`)**
+```json
+{
+  "type": "other",
+  "data": {
+    "content": "その他のVRChatログ内容"
+  }
+}
+```
 
 #### VRChat状態変更通知 (`vrchat_status_change`)
 
@@ -96,16 +169,30 @@ VRChat.exeプロセスの起動や終了、ログディレクトリの状態変�
 
 #### フィルター設定 (`set_filter`)
 
-受信するログを絞り込みたい場合に使用します。例えば、`user_join` と `user_leave` のログのみを受信したい場合は以下のようにします。
+受信するログを絞り込みたい場合に使用します。複数の条件を組み合わせてフィルタリングできます。
 
 ```json
 {
   "type": "set_filter",
   "data": {
-    "messageTypes": ["user_join", "user_leave"]
+    "messageTypes": ["user_join", "user_leave"],
+    "logLevel": ["info", "warning"],
+    "sources": ["VRChatLog"],
+    "keywords": ["VRCUser", "MyFriend"],
+    "exclude": {
+      "messageTypes": ["other"],
+      "keywords": ["spam"]
+    }
   }
 }
 ```
+
+主なフィルター条件：
+- `messageTypes`: 解析済みメッセージタイプでフィルタ
+- `logLevel`: ログレベルでフィルタ
+- `sources`: ログソースでフィルタ
+- `keywords`: ログ内容にキーワードが含まれるものをフィルタ
+- `exclude`: 除外条件（上記と同じ形式）
 
 ## 4. 実装サンプル (JavaScript)
 
@@ -142,11 +229,13 @@ ws.on('message', function incoming(data) {
         break;
 
       case 'log_message':
-        const log = message.data;
-        console.log(`[${new Date(log.timestamp).toLocaleTimeString()}] ${log.message}`);
-        if (log.parsed) {
-          // 解析済みデータがあれば利用
-          handleParsedLog(log.parsed);
+        const logData = message.data;
+        const logTime = new Date(logData.raw.timestamp).toLocaleTimeString();
+        console.log(`[${logTime}] ${logData.raw.content}`);
+        
+        // 解析済みデータがあれば利用
+        if (logData.parsed) {
+          handleParsedLog(logData.parsed);
         }
         break;
 
@@ -169,10 +258,19 @@ ws.on('message', function incoming(data) {
 function handleParsedLog(parsed) {
     switch(parsed.type) {
         case 'user_join':
-            console.log(`==> ${parsed.data.username} joined!`);
+            console.log(`==> ${parsed.data.userName} joined! (${parsed.data.userId})`);
             break;
         case 'user_leave':
-            console.log(`==> ${parsed.data.username} left!`);
+            console.log(`==> ${parsed.data.userName} left! (${parsed.data.userId})`);
+            break;
+        case 'world_change':
+            console.log(`==> World changed to ${parsed.data.worldId} in region ${parsed.data.region}`);
+            if (parsed.data.instance) {
+                console.log(`    Instance: ${parsed.data.instance}`);
+            }
+            break;
+        case 'other':
+            console.log(`==> Other event: ${parsed.data.content}`);
             break;
     }
 }
