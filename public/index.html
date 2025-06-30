@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VRChat Log Relay Test Client</title>
+    <title>VRChat Log Relay Client</title>
     <style>
         body { 
             font-family: Arial, sans-serif; 
@@ -204,7 +204,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>🚀 VRChat Log Relay Test Client</h1>
+        <h1>🚀 VRChat Log Relay Client</h1>
         
         <div id="status" class="status disconnected">未接続</div>
         
@@ -212,7 +212,6 @@
             <button id="connectBtn" onclick="connect()">🔗 接続</button>
             <button id="disconnectBtn" onclick="disconnect()" disabled>🔌 切断</button>
             <button onclick="clearLogs()">🗑️ ログクリア</button>
-            <button onclick="sendTestMessage()">📨 テストメッセージ送信</button>
             <label class="toggle-label">
                 🐛 デバッグ情報
                 <div class="toggle-switch">
@@ -263,7 +262,6 @@
             <ol>
                 <li>「🔗 接続」ボタンでWebSocketサーバーに接続</li>
                 <li>VRChatログファイルに変更があると自動でメッセージが表示されます</li>
-                <li>「📨 テストメッセージ送信」でサーバーとの通信をテスト</li>
             </ol>
         </div>
     </div>
@@ -360,20 +358,6 @@
                 ws.close();
                 ws = null;
                 addLog('システム', 'WebSocket接続を切断しました', 'info');
-            }
-        }
-
-        function sendTestMessage() {
-            if (ws && ws.readyState === WebSocket.OPEN) {
-                const testMessage = {
-                    type: 'test',
-                    message: 'テストメッセージ',
-                    timestamp: new Date().toISOString()
-                };
-                ws.send(JSON.stringify(testMessage));
-                addLog('送信', 'テストメッセージを送信しました', 'info');
-            } else {
-                addLog('エラー', 'WebSocketが接続されていません', 'error');
             }
         }
 
@@ -804,29 +788,9 @@
             debugLog('Debug mode toggled:', debugMode);
         }
 
-        function sendTestMessage() {
-            if (!ws || ws.readyState !== WebSocket.OPEN) {
-                addLog('エラー', 'WebSocketに接続していません', 'error');
-                return;
-            }
-            
-            const testMessage = {
-                type: 'test',
-                data: {
-                    message: 'テストメッセージ',
-                    timestamp: new Date().toISOString(),
-                    client: 'test-client'
-                }
-            };
-            
-            ws.send(JSON.stringify(testMessage));
-            addLog('テスト', 'テストメッセージを送信しました', 'info');
-            debugLog('Test message sent:', testMessage);
-        }
-
         // ページ読み込み時の初期化
         window.onload = function() {
-            addLog('システム', 'VRChat Log Relay Test Clientを開始しました', 'success');
+            addLog('システム', 'VRChat Log Relay Clientを開始しました', 'success');
             addLog('システム', 'サーバーが起動していることを確認してから接続してください', 'info');
             
             // デバッグトグルの初期状態を設定
