@@ -28,6 +28,7 @@
             <button id="disconnectBtn" onclick="disconnect()" disabled>切断</button>
             <button onclick="clearLogs()">ログクリア</button>
             <button onclick="requestStats()">統計情報取得</button>
+            <button id="debugBtn" onclick="toggleDebug()">デバッグOFF</button>
         </div>
         
         <div id="statsArea" style="background: #e9ecef; padding: 10px; margin: 10px 0; border-radius: 4px; display: none;">
@@ -52,19 +53,28 @@
         const disconnectBtn = document.getElementById('disconnectBtn');
         const statsArea = document.getElementById('statsArea');
         const statsContent = document.getElementById('statsContent');
+        const debugBtn = document.getElementById('debugBtn');
 
         let messageCount = 0;
+        let debugMode = true; // デバッグモードの状態
+
+        // デバッグ用のログ関数
+        function debugLog(...args) {
+            if (debugMode) {
+                console.log(...args);
+            }
+        }
 
         function connect() {
             if (ws && ws.readyState === WebSocket.OPEN) {
-                console.log('Already connected');
+                debugLog('Already connected');
                 return;
             }
 
             ws = new WebSocket('ws://localhost:8080');
             
             ws.onopen = function(event) {
-                console.log('WebSocket connected');
+                debugLog('WebSocket connected');
                 statusDiv.textContent = '接続中';
                 statusDiv.className = 'status connected';
                 connectBtn.disabled = true;
@@ -74,15 +84,15 @@
             };
 
             ws.onmessage = function(event) {
-                console.log('Message received:', event.data);
+                debugLog('Message received:', event.data);
                 try {
                     const message = JSON.parse(event.data);
-                    console.log('Parsed message:', message);
+                    debugLog('Parsed message:', message);
                     
                     // メッセージタイプに応じた詳細表示
                     if (message.type === 'log_message' && message.data) {
                         // 実際のデータ構造をコンソールに出力
-                        console.log('Log message data structure:', message.data);
+                        debugLog('Log message data structure:', message.data);
                         
                         // ProcessedMessage構造に合わせて修正
                         const logData = message.data;
@@ -112,7 +122,7 @@
             };
 
             ws.onclose = function(event) {
-                console.log('WebSocket closed', event);
+                debugLog('WebSocket closed', event);
                 statusDiv.textContent = '切断';
                 statusDiv.className = 'status disconnected';
                 connectBtn.disabled = false;
@@ -218,9 +228,22 @@
                 });
         }
 
+        function toggleDebug() {
+            debugMode = !debugMode;
+            debugBtn.textContent = debugMode ? 'デバッグOFF' : 'デバッグON';
+            debugBtn.style.backgroundColor = debugMode ? '#dc3545' : '#28a745';
+            debugBtn.style.color = 'white';
+            
+            addLog('システム', `デバッグモード: ${debugMode ? 'ON' : 'OFF'}`, 'info');
+            debugLog('Debug mode toggled:', debugMode);
+        }
+
         // ページ読み込み時に自動接続
         window.onload = function() {
             addLog('システム', 'テストクライアントを開始しました', 'info');
+            // デバッグボタンの初期状態を設定
+            toggleDebug();
+            toggleDebug(); // 2回呼び出してONの状態にする
         };
     </script>
 </body>

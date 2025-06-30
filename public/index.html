@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width        <div class="info-section">
+            <h3>📊 接続情報</h3>
+            <p><strong>WebSocketサーバー:</strong> <span id="wsUrl"></span></p>
+            <p><strong>HTTPサーバー:</strong> <span id="httpUrl"></span></p>
+            <p><strong>現在時刻:</strong> <span id="currentTime"></span></p>
+            <p><strong>接続状態:</strong> <span id="connectionState">未接続</span></p>
+        </div>-width, initial-scale=1.0">
+    <title>VRChat Log Relay Test Client</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 20px; 
+            background-color: #f5f5f5;
+        }
+        .container { 
+            max-width: 800px; 
+            margin: 0 auto; 
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .status { 
+            padding: 15px; 
+            margin: 15px 0; 
+            border-radius: 5px; 
+            font-weight: bold;
+            text-align: center;
+        }
+        .connected { 
+            background-color: #d4edda; 
+            color: #155724; 
+            border: 1px solid #c3e6cb;
+        }
+        .disconnected { 
+            background-color: #f8d7da; 
+            color: #721c24; 
+            border: 1px solid #f5c6cb;
+        }
+        .log-area { 
+            border: 1px solid #ccc; 
+            height: 400px; 
+            overflow-y: auto; 
+            padding: 10px; 
+            margin: 15px 0; 
+            background-color: #f8f9fa; 
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        button { 
+            padding: 10px 20px; 
+            margin: 5px; 
+            cursor: pointer; 
+            border: 1px solid #007bff;
+            background-color: #007bff;
+            color: white;
+            border-radius: 4px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #6c757d;
+            border-color: #6c757d;
+            cursor: not-allowed;
+        }
+        .message { 
+            margin: 8px 0; 
+            padding: 12px; 
+            border-left: 4px solid #007bff; 
+            background-color: white;
+            border-radius: 6px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            transition: all 0.2s ease;
+            position: relative;
+        }
+        .message:hover {
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+        }
+        .timestamp { 
+            color: #6c757d; 
+            font-size: 0.85em;
+            font-weight: 500;
+            background-color: #f8f9fa;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+        .message-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .message-type {
+            margin-left: 10px;
+            font-weight: bold;
+        }
+        .message-content {
+            margin-top: 8px;
+        }
+        .log-details {
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 10px;
+            margin: 8px 0;
+        }
+        .log-field {
+            margin: 4px 0;
+            padding: 3px 0;
+        }
+        .log-field strong {
+            color: #495057;
+            min-width: 80px;
+            display: inline-block;
+        }
+        .log-code {
+            background-color: #ffffff;
+            border: 1px solid #dee2e6;
+            border-radius: 3px;
+            padding: 6px 8px;
+            margin: 4px 0;
+            font-family: 'Courier New', Consolas, monospace;
+            font-size: 12px;
+            color: #495057;
+            word-break: break-all;
+        }
+        code {
+            background-color: #f8f9fa;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            border: 1px solid #e9ecef;
+        }
+        pre {
+            background-color: #f8f9fa !important;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .info-section {
+            background-color: #e9ecef;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 20px;
+        }
+        .error {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        .success {
+            color: #28a745;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 VRChat Log Relay Test Client</h1>
+        
+        <div id="status" class="status disconnected">未接続</div>
+        
+        <div>
+            <button id="connectBtn" onclick="connect()">🔗 接続</button>
+            <button id="disconnectBtn" onclick="disconnect()" disabled>🔌 切断</button>
+            <button onclick="clearLogs()">🗑️ ログクリア</button>
+            <button onclick="sendTestMessage()">📨 テストメッセージ送信</button>
+            <button id="debugBtn" onclick="toggleDebug()">🐛 デバッグOFF</button>
+        </div>
+        
+        <div class="info-section" style="margin: 15px 0;">
+            <h4>🔍 メッセージフィルター</h4>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <label style="display: flex; align-items: center; gap: 5px;">
+                    <input type="checkbox" id="filterLog" checked onchange="toggleFilter()"> 
+                    📋 VRChatログ
+                </label>
+                <label style="display: flex; align-items: center; gap: 5px;">
+                    <input type="checkbox" id="filterStatus" checked onchange="toggleFilter()"> 
+                    🎮 ステータス変更
+                </label>
+                <label style="display: flex; align-items: center; gap: 5px;">
+                    <input type="checkbox" id="filterSystem" checked onchange="toggleFilter()"> 
+                    🔧 システム
+                </label>
+                <label style="display: flex; align-items: center; gap: 5px;">
+                    <input type="checkbox" id="filterTest" checked onchange="toggleFilter()"> 
+                    🧪 テスト
+                </label>
+            </div>
+        </div>
+        
+        <div id="logArea" class="log-area">
+            <div class="message">
+                <span class="timestamp">システム</span> - ログエリアが初期化されました
+            </div>
+        </div>
+        
+        <div class="info-section">
+            <h3>📊 接続情報</h3>
+            <p><strong>WebSocketサーバー:</strong> ws://localhost:8080</p>
+            <p><strong>HTTPサーバー:</strong> http://localhost:3001</p>
+            <p><strong>現在時刻:</strong> <span id="currentTime"></span></p>
+            <p><strong>接続状態:</strong> <span id="connectionState">未接続</span></p>
+        </div>
+        
+        <div class="info-section">
+            <h3>📝 使用方法</h3>
+            <ol>
+                <li>「🔗 接続」ボタンでWebSocketサーバーに接続</li>
+                <li>VRChatログファイルに変更があると自動でメッセージが表示されます</li>
+                <li>「📨 テストメッセージ送信」でサーバーとの通信をテスト</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        const statusDiv = document.getElementById('status');
+        const logArea = document.getElementById('logArea');
+        const connectBtn = document.getElementById('connectBtn');
+        const disconnectBtn = document.getElementById('disconnectBtn');
+        const connectionState = document.getElementById('connectionState');
+        const debugBtn = document.getElementById('debugBtn');
+
+        let debugMode = true; // デバッグモードの状態
+
+        // デバッグ用のログ関数
+        function debugLog(...args) {
+            if (debugMode) {
+                console.log(...args);
+            }
+        }
+
+        // 動的にWebSocket URLを生成
+        const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${wsProtocol}//${window.location.host}`;
+        const httpUrl = `${window.location.protocol}//${window.location.host}`;
+        
+        // URL情報を表示
+        document.getElementById('wsUrl').textContent = wsUrl;
+        document.getElementById('httpUrl').textContent = httpUrl;
+
+        // 現在時刻を表示
+        function updateTime() {
+            document.getElementById('currentTime').textContent = new Date().toLocaleString('ja-JP');
+        }
+        
+        setInterval(updateTime, 1000);
+        updateTime();
+
+        function connect() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                debugLog('Already connected');
+                addLog('システム', '既に接続済みです', 'info');
+                return;
+            }
+
+            addLog('システム', 'WebSocketサーバーに接続中...', 'info');
+            ws = new WebSocket(wsUrl);
+            
+            ws.onopen = function(event) {
+                debugLog('WebSocket connected');
+                statusDiv.textContent = '✅ 接続中';
+                statusDiv.className = 'status connected';
+                connectionState.textContent = '接続中';
+                connectionState.className = 'success';
+                connectBtn.disabled = true;
+                disconnectBtn.disabled = false;
+                
+                addLog('システム', 'WebSocketサーバーに接続しました', 'success');
+            };
+
+            ws.onmessage = function(event) {
+                debugLog('Message received:', event.data);
+                try {
+                    const message = JSON.parse(event.data);
+                    debugLog('Parsed message:', message); // メッセージ構造をコンソールに出力
+                    addFormattedLogMessage(message);
+                } catch (e) {
+                    console.error('Failed to parse message:', e);
+                    addLog('RAW', event.data, 'raw');
+                }
+            };
+
+            ws.onclose = function(event) {
+                debugLog('WebSocket closed', event);
+                statusDiv.textContent = '❌ 切断';
+                statusDiv.className = 'status disconnected';
+                connectionState.textContent = '切断';
+                connectionState.className = 'error';
+                connectBtn.disabled = false;
+                disconnectBtn.disabled = true;
+                
+                addLog('システム', `WebSocket接続が切断されました (コード: ${event.code})`, 'error');
+            };
+
+            ws.onerror = function(error) {
+                console.error('WebSocket error:', error);
+                addLog('エラー', 'WebSocket接続エラーが発生しました', 'error');
+            };
+        }
+
+        function disconnect() {
+            if (ws) {
+                ws.close();
+                ws = null;
+                addLog('システム', 'WebSocket接続を切断しました', 'info');
+            }
+        }
+
+        function sendTestMessage() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                const testMessage = {
+                    type: 'test',
+                    message: 'テストメッセージ',
+                    timestamp: new Date().toISOString()
+                };
+                ws.send(JSON.stringify(testMessage));
+                addLog('送信', 'テストメッセージを送信しました', 'info');
+            } else {
+                addLog('エラー', 'WebSocketが接続されていません', 'error');
+            }
+        }
+
+        function addFormattedLogMessage(message) {
+            const logEntry = document.createElement('div');
+            logEntry.className = 'message';
+            
+            const messageType = message.type || 'メッセージ';
+            
+            // フィルター設定をチェック
+            if (!shouldShowMessage(messageType)) {
+                return;
+            }
+            
+            // メッセージタイプに応じて色とアイコンを設定
+            let color = '#007bff';
+            let icon = '📝';
+            let typeLabel = messageType;
+            
+            switch(messageType) {
+                case 'vrchat_status_change':
+                    color = '#28a745';
+                    icon = '🎮';
+                    typeLabel = 'VRChatステータス変更';
+                    break;
+                case 'log_message':
+                    color = '#17a2b8';
+                    icon = '📋';
+                    typeLabel = 'VRChatログ';
+                    break;
+                case 'error':
+                    color = '#dc3545';
+                    icon = '❌';
+                    typeLabel = 'エラー';
+                    break;
+                case 'test':
+                    color = '#6f42c1';
+                    icon = '🧪';
+                    typeLabel = 'テスト';
+                    break;
+            }
+            
+            logEntry.style.borderLeftColor = color;
+            logEntry.setAttribute('data-message-type', messageType);
+            
+            // ヘッダー部分（タイムスタンプとタイプ）
+            const headerDiv = document.createElement('div');
+            headerDiv.className = 'message-header';
+            
+            const timestamp = document.createElement('span');
+            timestamp.className = 'timestamp';
+            timestamp.textContent = new Date().toLocaleTimeString('ja-JP');
+            
+            const typeSpan = document.createElement('span');
+            typeSpan.className = 'message-type';
+            typeSpan.innerHTML = `${icon} ${typeLabel}`;
+            typeSpan.style.color = color;
+            
+            headerDiv.appendChild(timestamp);
+            headerDiv.appendChild(typeSpan);
+            
+            // メッセージ内容部分
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            
+            if (messageType === 'log_message' && message.data) {
+                // VRChatログメッセージの場合
+                const logData = message.data;
+                const detailsDiv = document.createElement('div');
+                detailsDiv.className = 'log-details';
+                
+                // 時刻（rawから取得）
+                if (logData.raw && logData.raw.timestamp) {
+                    const timeField = document.createElement('div');
+                    timeField.className = 'log-field';
+                    timeField.innerHTML = `<strong>📅 時刻:</strong> ${new Date(logData.raw.timestamp).toLocaleString('ja-JP')}`;
+                    detailsDiv.appendChild(timeField);
+                } else if (logData.timestamp) {
+                    const timeField = document.createElement('div');
+                    timeField.className = 'log-field';
+                    timeField.innerHTML = `<strong>📅 時刻:</strong> ${new Date(logData.timestamp).toLocaleString('ja-JP')}`;
+                    detailsDiv.appendChild(timeField);
+                }
+                
+                // レベル情報（あれば）
+                if (logData.raw && logData.raw.level) {
+                    const levelField = document.createElement('div');
+                    levelField.className = 'log-field';
+                    levelField.innerHTML = `<strong>📊 レベル:</strong> ${logData.raw.level}`;
+                    detailsDiv.appendChild(levelField);
+                }
+                
+                // ソース
+                if (logData.source) {
+                    const sourceField = document.createElement('div');
+                    sourceField.className = 'log-field';
+                    sourceField.innerHTML = `<strong>🔍 ソース:</strong> ${logData.source}`;
+                    detailsDiv.appendChild(sourceField);
+                }
+                
+                // 元のログ行（rawデータから取得）
+                if (logData.raw && logData.raw.content) {
+                    const lineField = document.createElement('div');
+                    lineField.className = 'log-field';
+                    lineField.innerHTML = `<strong>📝 ログ内容:</strong>`;
+                    
+                    const codeDiv = document.createElement('div');
+                    codeDiv.className = 'log-code';
+                    codeDiv.textContent = logData.raw.content;
+                    
+                    lineField.appendChild(codeDiv);
+                    detailsDiv.appendChild(lineField);
+                }
+                
+                // メッセージ内容（処理済み）
+                if (logData.message && logData.message !== (logData.raw && logData.raw.content)) {
+                    const messageField = document.createElement('div');
+                    messageField.className = 'log-field';
+                    messageField.innerHTML = `<strong>💬 メッセージ:</strong>`;
+                    
+                    const messageDiv = document.createElement('div');
+                    messageDiv.className = 'log-code';
+                    messageDiv.textContent = logData.message;
+                    
+                    messageField.appendChild(messageDiv);
+                    detailsDiv.appendChild(messageField);
+                }
+                
+                // パース済み情報
+                if (logData.parsed && Object.keys(logData.parsed).length > 0) {
+                    const parsedField = document.createElement('div');
+                    parsedField.className = 'log-field';
+                    parsedField.innerHTML = `<strong>⚙️ 解析結果:</strong>`;
+                    
+                    const parsedDiv = document.createElement('div');
+                    parsedDiv.className = 'log-details';
+                    parsedDiv.style.marginTop = '5px';
+                    parsedDiv.style.backgroundColor = '#ffffff';
+                    parsedDiv.style.border = '1px solid #dee2e6';
+                    
+                    // パースされた各フィールドを表示
+                    for (const [key, value] of Object.entries(logData.parsed)) {
+                        const fieldDiv = document.createElement('div');
+                        fieldDiv.className = 'log-field';
+                        fieldDiv.innerHTML = `<strong>${key}:</strong> <code style="background-color: #f8f9fa; padding: 2px 4px; border-radius: 3px;">${value}</code>`;
+                        parsedDiv.appendChild(fieldDiv);
+                    }
+                    
+                    parsedField.appendChild(parsedDiv);
+                    detailsDiv.appendChild(parsedField);
+                }
+                
+                // デバッグ情報: 完全なメッセージ構造（デバッグモードがONの場合のみ表示）
+                if (debugMode) {
+                    const debugField = document.createElement('div');
+                    debugField.className = 'log-field debug-info';
+                    debugField.innerHTML = `<strong>🔧 デバッグ情報:</strong>`;
+                    
+                    const debugDiv = document.createElement('div');
+                    debugDiv.className = 'log-details';
+                    debugDiv.style.marginTop = '5px';
+                    debugDiv.style.backgroundColor = '#f8f9fa';
+                    debugDiv.style.border = '1px solid #dee2e6';
+                    debugDiv.style.fontSize = '11px';
+                    
+                    const debugPre = document.createElement('pre');
+                    debugPre.style.margin = '0';
+                    debugPre.style.padding = '8px';
+                    debugPre.style.whiteSpace = 'pre-wrap';
+                    debugPre.style.fontFamily = 'Courier New, Consolas, monospace';
+                    debugPre.textContent = JSON.stringify(logData, null, 2);
+                    
+                    debugDiv.appendChild(debugPre);
+                    debugField.appendChild(debugDiv);
+                    detailsDiv.appendChild(debugField);
+                }
+                
+                contentDiv.appendChild(detailsDiv);
+                
+            } else if (messageType === 'vrchat_status_change' && message.data) {
+                // VRChatステータス変更の場合
+                const statusData = message.data;
+                const detailsDiv = document.createElement('div');
+                detailsDiv.className = 'log-details';
+                
+                const statusField = document.createElement('div');
+                statusField.className = 'log-field';
+                const prevStatus = statusData.previousStatus || '不明';
+                const currStatus = statusData.currentStatus || '不明';
+                statusField.innerHTML = `<strong>🔄 ステータス変更:</strong> <span style="color: #dc3545;">${prevStatus}</span> → <span style="color: #28a745;">${currStatus}</span>`;
+                detailsDiv.appendChild(statusField);
+                
+                if (statusData.processInfo) {
+                    const processField = document.createElement('div');
+                    processField.className = 'log-field';
+                    processField.innerHTML = `<strong>🔧 プロセス情報:</strong> PID ${statusData.processInfo.processId}, 検出方法: ${statusData.processInfo.detectionMethod}`;
+                    detailsDiv.appendChild(processField);
+                }
+                
+                if (statusData.timestamp) {
+                    const timeField = document.createElement('div');
+                    timeField.className = 'log-field';
+                    timeField.innerHTML = `<strong>📅 変更時刻:</strong> ${new Date(statusData.timestamp).toLocaleString('ja-JP')}`;
+                    detailsDiv.appendChild(timeField);
+                }
+                
+                contentDiv.appendChild(detailsDiv);
+                
+            } else {
+                // その他のメッセージ
+                const detailsDiv = document.createElement('div');
+                detailsDiv.className = 'log-details';
+                
+                const pre = document.createElement('pre');
+                pre.style.background = '#ffffff';
+                pre.style.border = '1px solid #dee2e6';
+                pre.style.borderRadius = '3px';
+                pre.style.fontSize = '11px';
+                pre.style.margin = '0';
+                pre.style.padding = '8px';
+                pre.style.whiteSpace = 'pre-wrap';
+                pre.style.fontFamily = 'Courier New, Consolas, monospace';
+                pre.textContent = JSON.stringify(message, null, 2);
+                
+                detailsDiv.appendChild(pre);
+                contentDiv.appendChild(detailsDiv);
+            }
+            
+            logEntry.appendChild(headerDiv);
+            logEntry.appendChild(contentDiv);
+            
+            logArea.appendChild(logEntry);
+            logArea.scrollTop = logArea.scrollHeight;
+        }
+
+        function shouldShowMessage(messageType) {
+            switch(messageType) {
+                case 'log_message':
+                    return document.getElementById('filterLog').checked;
+                case 'vrchat_status_change':
+                    return document.getElementById('filterStatus').checked;
+                case 'test':
+                    return document.getElementById('filterTest').checked;
+                default:
+                    return document.getElementById('filterSystem').checked;
+            }
+        }
+
+        function toggleFilter() {
+            const messages = logArea.querySelectorAll('.message');
+            messages.forEach(message => {
+                const messageType = message.getAttribute('data-message-type') || 'system';
+                if (shouldShowMessage(messageType)) {
+                    message.style.display = 'block';
+                } else {
+                    message.style.display = 'none';
+                }
+            });
+        }
+
+        function addLog(type, content, level = 'info') {
+            const logEntry = document.createElement('div');
+            logEntry.className = 'message';
+            logEntry.setAttribute('data-message-type', 'system');
+            
+            // フィルター設定をチェック
+            if (!shouldShowMessage('system')) {
+                return;
+            }
+            
+            // レベルに応じて色とアイコンを設定
+            let color = '#17a2b8';
+            let icon = '🔧';
+            
+            if (level === 'error') {
+                color = '#dc3545';
+                icon = '❌';
+            } else if (level === 'success') {
+                color = '#28a745';
+                icon = '✅';
+            } else if (level === 'info') {
+                color = '#17a2b8';
+                icon = '🔧';
+            }
+            
+            logEntry.style.borderLeftColor = color;
+            
+            // ヘッダー部分
+            const headerDiv = document.createElement('div');
+            headerDiv.className = 'message-header';
+            
+            const timestamp = document.createElement('span');
+            timestamp.className = 'timestamp';
+            timestamp.textContent = new Date().toLocaleTimeString('ja-JP');
+            
+            const typeSpan = document.createElement('span');
+            typeSpan.className = 'message-type';
+            typeSpan.innerHTML = `${icon} ${type}`;
+            typeSpan.style.color = color;
+            
+            headerDiv.appendChild(timestamp);
+            headerDiv.appendChild(typeSpan);
+            
+            // コンテンツ部分
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            
+            const detailsDiv = document.createElement('div');
+            detailsDiv.className = 'log-details';
+            
+            const contentField = document.createElement('div');
+            contentField.className = 'log-field';
+            contentField.textContent = content;
+            detailsDiv.appendChild(contentField);
+            
+            contentDiv.appendChild(detailsDiv);
+            
+            logEntry.appendChild(headerDiv);
+            logEntry.appendChild(contentDiv);
+            
+            logArea.appendChild(logEntry);
+            logArea.scrollTop = logArea.scrollHeight;
+        }
+
+        function clearLogs() {
+            logArea.innerHTML = '';
+            addLog('システム', 'ログをクリアしました', 'success');
+        }
+
+        function toggleDebug() {
+            debugMode = !debugMode;
+            debugBtn.textContent = debugMode ? '🐛 デバッグOFF' : '🐛 デバッグON';
+            debugBtn.style.backgroundColor = debugMode ? '#dc3545' : '#28a745';
+            debugBtn.style.color = 'white';
+            
+            // 既存のログメッセージのデバッグ情報を表示・非表示
+            const debugInfoElements = logArea.querySelectorAll('.debug-info');
+            debugInfoElements.forEach(element => {
+                element.style.display = debugMode ? 'block' : 'none';
+            });
+            
+            addLog('システム', `デバッグモード: ${debugMode ? 'ON' : 'OFF'}`, 'info');
+            debugLog('Debug mode toggled:', debugMode);
+        }
+
+        function sendTestMessage() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                addLog('エラー', 'WebSocketに接続していません', 'error');
+                return;
+            }
+            
+            const testMessage = {
+                type: 'test',
+                data: {
+                    message: 'テストメッセージ',
+                    timestamp: new Date().toISOString(),
+                    client: 'test-client'
+                }
+            };
+            
+            ws.send(JSON.stringify(testMessage));
+            addLog('テスト', 'テストメッセージを送信しました', 'info');
+            debugLog('Test message sent:', testMessage);
+        }
+
+        // ページ読み込み時の初期化
+        window.onload = function() {
+            addLog('システム', 'VRChat Log Relay Test Clientを開始しました', 'success');
+            addLog('システム', 'サーバーが起動していることを確認してから接続してください', 'info');
+            
+            // デバッグボタンの初期状態を設定
+            if (debugBtn) {
+                toggleDebug();
+                toggleDebug(); // 2回呼び出してONの状態にする
+            }
+        };
+
+        // ページを離れる時にWebSocket接続を閉じる
+        window.onbeforeunload = function() {
+            if (ws) {
+                ws.close();
+            }
+        };
+    </script>
+</body>
+</html>
