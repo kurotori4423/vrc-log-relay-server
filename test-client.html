@@ -6,13 +6,14 @@
     <title>VRChat Log Relay Test Client</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 20px; }
-        .container { max-width: 800px; margin: 0 auto; }
+        .container { max-width: 1000px; margin: 0 auto; }
         .status { padding: 10px; margin: 10px 0; border-radius: 5px; }
         .connected { background-color: #d4edda; color: #155724; }
         .disconnected { background-color: #f8d7da; color: #721c24; }
-        .log-area { border: 1px solid #ccc; height: 400px; overflow-y: auto; padding: 10px; margin: 10px 0; background-color: #f8f9fa; }
+        .log-area { border: 1px solid #ccc; height: 500px; overflow-y: auto; padding: 10px; margin: 10px 0; background-color: #f8f9fa; }
         button { padding: 10px 20px; margin: 5px; cursor: pointer; }
         .message { margin: 5px 0; padding: 5px; border-left: 3px solid #007bff; }
+        .detailed-log { background-color: #fff; border-radius: 4px; }
         .timestamp { color: #666; font-size: 0.9em; }
     </style>
 </head>
@@ -26,6 +27,12 @@
             <button id="connectBtn" onclick="connect()">接続</button>
             <button id="disconnectBtn" onclick="disconnect()" disabled>切断</button>
             <button onclick="clearLogs()">ログクリア</button>
+            <button onclick="requestStats()">統計情報取得</button>
+        </div>
+        
+        <div id="statsArea" style="background: #e9ecef; padding: 10px; margin: 10px 0; border-radius: 4px; display: none;">
+            <h4>統計情報</h4>
+            <div id="statsContent">統計情報なし</div>
         </div>
         
         <div id="logArea" class="log-area"></div>
@@ -43,6 +50,10 @@
         const logArea = document.getElementById('logArea');
         const connectBtn = document.getElementById('connectBtn');
         const disconnectBtn = document.getElementById('disconnectBtn');
+        const statsArea = document.getElementById('statsArea');
+        const statsContent = document.getElementById('statsContent');
+
+        let messageCount = 0;
 
         function connect() {
             if (ws && ws.readyState === WebSocket.OPEN) {
@@ -66,8 +77,36 @@
                 console.log('Message received:', event.data);
                 try {
                     const message = JSON.parse(event.data);
-                    addLog(message.type || 'メッセージ', JSON.stringify(message, null, 2), 'message');
+                    console.log('Parsed message:', message);
+                    
+                    // メッセージタイプに応じた詳細表示
+                    if (message.type === 'log_message' && message.data) {
+                        // 実際のデータ構造をコンソールに出力
+                        console.log('Log message data structure:', message.data);
+                        
+                        // ProcessedMessage構造に合わせて修正
+                        const logData = message.data;
+                        messageCount++;
+                        
+                        // 実際のデータ構造に基づいて内容を取得
+                        const content = logData.raw?.content || logData.content || '内容なし';
+                        const source = logData.source || '不明';
+                        const timestamp = logData.raw?.timestamp || logData.timestamp || new Date();
+                        const fileName = logData.raw?.fileName || '不明';
+                        
+                        addLogDetailed('ログ', {
+                            id: logData.id || 'ID不明',
+                            source: source,
+                            content: content,
+                            timestamp: new Date(timestamp).toLocaleString(),
+                            filePath: fileName
+                        }, 'log');
+                    } else {
+                        // その他のメッセージ
+                        addLog(message.type || 'メッセージ', JSON.stringify(message, null, 2), 'message');
+                    }
                 } catch (e) {
+                    console.error('JSON parse error:', e);
                     addLog('RAW', event.data, 'raw');
                 }
             };
@@ -118,8 +157,65 @@
             logArea.scrollTop = logArea.scrollHeight;
         }
 
+        function addLogDetailed(type, logData, level = 'info') {
+            const logEntry = document.createElement('div');
+            logEntry.className = 'message detailed-log';
+            logEntry.style.borderLeft = '3px solid #28a745';
+            logEntry.style.marginBottom = '10px';
+            
+            const timestamp = document.createElement('span');
+            timestamp.className = 'timestamp';
+            timestamp.textContent = new Date().toLocaleTimeString();
+            
+            const typeSpan = document.createElement('strong');
+            typeSpan.textContent = `[${type}] `;
+            typeSpan.style.color = '#28a745';
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.innerHTML = `
+                <div style="margin-top: 5px;">
+                    <strong>ID:</strong> ${logData.id}<br>
+                    <strong>ソース:</strong> ${logData.source}<br>
+                    <strong>ファイル:</strong> ${logData.filePath}<br>
+                    <strong>時刻:</strong> ${logData.timestamp}<br>
+                    <strong>内容:</strong> <span style="background: #f8f9fa; padding: 2px 4px; border-radius: 3px; font-family: monospace;">${logData.content}</span>
+                </div>
+            `;
+            
+            logEntry.appendChild(timestamp);
+            logEntry.appendChild(document.createTextNode(' '));
+            logEntry.appendChild(typeSpan);
+            logEntry.appendChild(contentDiv);
+            
+            logArea.appendChild(logEntry);
+            logArea.scrollTop = logArea.scrollHeight;
+        }
+
         function clearLogs() {
             logArea.innerHTML = '';
+            messageCount = 0;
+        }
+
+        function requestStats() {
+            fetch('http://localhost:3000/api/status')
+                .then(response => response.json())
+                .then(data => {
+                    statsArea.style.display = 'block';
+                    statsContent.innerHTML = `
+                        <div><strong>サーバー状態:</strong> ${data.server?.state || '不明'}</div>
+                        <div><strong>アップタイム:</strong> ${data.server?.uptime || '不明'}秒</div>
+                        <div><strong>VRChat状態:</strong> ${data.vrchat?.status || '不明'}</div>
+                        <div><strong>接続中クライアント:</strong> ${data.websocket?.connectedClients || 0}</div>
+                        <div><strong>処理済みログメッセージ:</strong> ${data.metrics?.logMessagesProcessed || 0}</div>
+                        <div><strong>受信メッセージ数:</strong> ${messageCount}</div>
+                        <div><strong>最後のログ:</strong> ${data.metrics?.lastLogMessage ? new Date(data.metrics.lastLogMessage).toLocaleString() : 'なし'}</div>
+                    `;
+                })
+                .catch(error => {
+                    console.error('統計情報取得エラー:', error);
+                    statsArea.style.display = 'block';
+                    statsContent.textContent = '統計情報の取得に失敗しました';
+                });
         }
 
         // ページ読み込み時に自動接続
