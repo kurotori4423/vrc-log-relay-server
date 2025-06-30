@@ -38,6 +38,10 @@ export interface FullServerConfig {
       processName: string;
       retryLimit: number;
       detectionTimeout: number;
+      quietMode: {
+        enabled: boolean;
+        suppressDebugLogs: boolean;
+      };
     };
     directoryMonitoring: {
       enabled: boolean;

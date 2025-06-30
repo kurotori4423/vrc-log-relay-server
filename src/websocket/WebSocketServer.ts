@@ -16,10 +16,12 @@ export class WebSocketServer extends EventEmitter {
   private clients: Map<string, ClientConnection> = new Map();
   private config: ServerConfig;
   private isRunning: boolean = false;
+  private logWatcher?: any; // VRChatLogWatcherの参照（循環参照回避のためany型）
 
-  constructor(config: ServerConfig) {
+  constructor(config: ServerConfig, logWatcher?: any) {
     super();
     this.config = config;
+    this.logWatcher = logWatcher;
   }
 
   /**
@@ -132,12 +134,27 @@ export class WebSocketServer extends EventEmitter {
       }
     }
 
-    logger.debug('Message broadcasted', {
-      messageType: message.type,
-      successCount,
-      errorCount,
-      totalClients: this.clients.size
-    });
+    // 静寂モード中でなければデバッグログを出力
+    if (!this.isInQuietModeNow()) {
+      logger.debug('Message broadcasted', {
+        messageType: message.type,
+        successCount,
+        errorCount,
+        totalClients: this.clients.size
+      });
+    }
+  }
+
+  /**
+   * 静寂モード中かどうかを確認
+   */
+  private isInQuietModeNow(): boolean {
+    if (!this.logWatcher) {
+      return false;
+    }
+    // VRChatLogWatcherのisInQuietModeNowメソッドを呼び出し
+    return typeof this.logWatcher.isInQuietModeNow === 'function' && 
+           this.logWatcher.isInQuietModeNow();
   }
 
   /**

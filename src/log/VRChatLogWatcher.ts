@@ -58,6 +58,13 @@ interface WatcherConfig {
     depth: number;
     ignoreInitial: boolean;
   };
+  /** 静寂モード設定 */
+  quietMode: {
+    /** 静寂モード有効化 */
+    enabled: boolean;
+    /** デバッグログの出力を抑制するか */
+    suppressDebugLogs: boolean;
+  };
 }
 
 /**
@@ -83,6 +90,7 @@ export class VRChatLogWatcher extends EventEmitter {
   // 状態管理
   private isWatching = false;
   private lastStatusChange = Date.now();
+  private lastSuccessfulCheck = Date.now();
 
   constructor(config: Partial<WatcherConfig> = {}) {
     super();
@@ -96,6 +104,10 @@ export class VRChatLogWatcher extends EventEmitter {
         usePolling: false,
         depth: 1,
         ignoreInitial: false
+      },
+      quietMode: {
+        enabled: true,
+        suppressDebugLogs: true
       },
       ...config
     };
@@ -234,6 +246,7 @@ export class VRChatLogWatcher extends EventEmitter {
         this.vrchatStatus = currentStatus;
         this.processInfo = processInfo;
         this.lastStatusChange = Date.now();
+        this.lastSuccessfulCheck = Date.now();
         
         logger.info('VRChat status changed', { 
           from: previousStatus, 
@@ -258,6 +271,7 @@ export class VRChatLogWatcher extends EventEmitter {
         // 同じRUNNINGステータス内でのプロセスID変更
         const previousPid = this.processInfo.processId;
         this.processInfo = processInfo;
+        this.lastSuccessfulCheck = Date.now();
         
         logger.info('VRChat process ID changed', {
           previousPid,
@@ -271,10 +285,29 @@ export class VRChatLogWatcher extends EventEmitter {
           newProcessInfo: processInfo,
           timestamp: Date.now()
         });
+      } else {
+        // ステータス変更もプロセスID変更もない通常のチェック
+        this.lastSuccessfulCheck = Date.now();
+        
+        // 静寂モード中でなければデバッグログを出力
+        if (!this.isInQuietModeNow()) {
+          logger.debug('VRChat process check completed', {
+            status: currentStatus,
+            processId: processInfo?.processId,
+            isQuietMode: this.isInQuietModeNow()
+          });
+        }
       }
     } catch (error) {
       logger.error('Failed to check VRChat process', error);
     }
+  }
+
+  /**
+   * 静寂モード中かどうかを確認
+   */
+  public isInQuietModeNow(): boolean {
+    return this.config.quietMode.enabled && this.config.quietMode.suppressDebugLogs;
   }
 
   /**
@@ -341,18 +374,26 @@ export class VRChatLogWatcher extends EventEmitter {
           if (result) {
             // 自己参照チェック: 現在のプロセスと同じPIDでないことを確認
             if (result.processId === process.pid) {
-              logger.debug(`Skipping self-reference: PID ${result.processId} is current process`);
+              if (!this.isInQuietModeNow()) {
+                logger.debug(`Skipping self-reference: PID ${result.processId} is current process`);
+              }
               continue;
             }
             
-            logger.debug(`Process detected using ${method.name} in ${duration}ms`);
+            if (!this.isInQuietModeNow()) {
+              logger.debug(`Process detected using ${method.name} in ${duration}ms`);
+            }
             return result;
           }
           
-          logger.debug(`No process found with ${method.name} (${duration}ms)`);
+          if (!this.isInQuietModeNow()) {
+            logger.debug(`No process found with ${method.name} (${duration}ms)`);
+          }
           break; // 成功したが見つからなかった場合はリトライしない
         } catch (error) {
-          logger.warn(`Detection method ${method.name} failed (retry ${retry + 1}/3):`, error);
+          if (!this.isInQuietModeNow()) {
+            logger.warn(`Detection method ${method.name} failed (retry ${retry + 1}/3):`, error);
+          }
           
           if (retry < 2) {
             await this.delay(1000); // 1秒待機してリトライ

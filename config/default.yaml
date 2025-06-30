@@ -27,6 +27,11 @@ vrchat:
     processName: "VRChat.exe"   # 監視対象プロセス名
     retryLimit: 3               # 検出失敗時のリトライ数
     detectionTimeout: 10000     # 検出タイムアウト（ミリ秒）
+    
+    # 静寂モード設定（ログ出力最適化）
+    quietMode:
+      enabled: true             # 静寂モード有効
+      suppressDebugLogs: true   # デバッグログ抑制
   
   # ディレクトリ監視設定
   directoryMonitoring:
@@ -93,7 +98,7 @@ logging:
     server: "info"              # サーバー関連
     vrchat: "info"              # VRChat監視関連
     websocket: "info"           # WebSocket関連
-    messages: "debug"           # メッセージ処理関連
+    messages: "info"           # メッセージ処理関連
 
 # 機能有効/無効設定
 features:

@@ -78,15 +78,29 @@ interface UdonLogData {
 export class MessageProcessor {
   private parsers: Map<LogSource, LogParser[]>;
   private logger = logMessageProcessor;
+  private logWatcher?: any; // VRChatLogWatcherの参照（循環参照回避のためany型）
 
-  constructor() {
+  constructor(logWatcher?: any) {
     this.parsers = new Map();
+    this.logWatcher = logWatcher;
     this.initializeDefaultParsers();
   }
 
   // =========================================================================
-  // パブリックメソッド
+  // プライベートメソッド
   // =========================================================================
+
+  /**
+   * 静寂モード中かどうかを確認
+   */
+  private isInQuietModeNow(): boolean {
+    if (!this.logWatcher) {
+      return false;
+    }
+    // VRChatLogWatcherのisInQuietModeNowメソッドを呼び出し
+    return typeof this.logWatcher.isInQuietModeNow === 'function' && 
+           this.logWatcher.isInQuietModeNow();
+  }
 
   /**
    * ログ行を解析して構造化メッセージに変換
@@ -102,7 +116,10 @@ export class MessageProcessor {
         return null;
       }
 
-      this.logger('Processing log line', { lineLength: line.length });
+      // 静寂モード中でなければデバッグログを出力
+      if (!this.isInQuietModeNow()) {
+        this.logger('Processing log line', { lineLength: line.length });
+      }
 
       // 1. 基本ログ形式の解析
       const basicParsed = this.parseBasicLogFormat(line);
@@ -120,11 +137,14 @@ export class MessageProcessor {
       // 3. 構造化メッセージの構築
       const processed = this.buildProcessedMessage(basicParsed, detailedParsed, metadata);
 
-      this.logger('Successfully processed message', {
-        messageId: processed.id,
-        source: processed.source,
-        hasParsed: !!processed.parsed
-      });
+      // 静寂モード中でなければデバッグログを出力
+      if (!this.isInQuietModeNow()) {
+        this.logger('Successfully processed message', {
+          messageId: processed.id,
+          source: processed.source,
+          hasParsed: !!processed.parsed
+        });
+      }
 
       return processed;
 

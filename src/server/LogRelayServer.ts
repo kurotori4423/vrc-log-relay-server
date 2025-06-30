@@ -85,15 +85,25 @@ export class LogRelayServer extends EventEmitter {
     this.setupExpressMiddleware();
     this.setupExpressRoutes();
     
-    // WebSocketサーバー初期化
-    this.wsServer = new WebSocketServer(config);
-    
-    // ログ監視・処理コンポーネント初期化
+    // ログ監視・処理コンポーネント初期化（先に初期化）
     this.logWatcher = new VRChatLogWatcher({
       logDirectory: config.vrchat.logDirectory,
-      groupPeriod: config.vrchat.monitoring.groupPeriod
+      groupPeriod: config.vrchat.monitoring.groupPeriod,
+      maxFiles: config.vrchat.monitoring.maxFiles,
+      processCheckInterval: config.vrchat.processMonitoring.interval,
+      quietMode: config.vrchat.processMonitoring.quietMode,
+      directoryWatchOptions: {
+        usePolling: config.vrchat.directoryMonitoring.usePolling,
+        depth: config.vrchat.directoryMonitoring.depth,
+        ignoreInitial: true
+      }
     });
-    this.messageProcessor = new MessageProcessor();
+    
+    // WebSocketサーバー初期化（VRChatLogWatcherの参照を渡す）
+    this.wsServer = new WebSocketServer(config, this.logWatcher);
+    
+    // MessageProcessor初期化（VRChatLogWatcherの参照を渡す）
+    this.messageProcessor = new MessageProcessor(this.logWatcher);
     
     // イベントリスナー設定
     this.setupEventListeners();
