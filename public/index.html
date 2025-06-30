@@ -802,7 +802,8 @@
                                 if (parsedData.data.userId) {
                                     const idField = document.createElement('div');
                                     idField.className = 'log-field';
-                                    idField.innerHTML = `<strong>🆔 ユーザーID:</strong> <code style="background-color: #f3e5f5; padding: 3px 6px; border-radius: 3px; color: #7b1fa2;">${parsedData.data.userId}</code>`;
+                                    const userProfileUrl = `https://vrchat.com/home/user/${parsedData.data.userId}`;
+                                    idField.innerHTML = `<strong>🆔 ユーザーID:</strong> <a href="${userProfileUrl}" target="_blank" style="color: #7b1fa2; text-decoration: none;"><code style="background-color: #f3e5f5; padding: 3px 6px; border-radius: 3px; color: #7b1fa2;">${parsedData.data.userId}</code></a>`;
                                     parsedDiv.appendChild(idField);
                                 }
                                 break;
@@ -812,19 +813,21 @@
                                 if (parsedData.data.worldId) {
                                     const worldField = document.createElement('div');
                                     worldField.className = 'log-field';
-                                    worldField.innerHTML = `<strong>🌍 ワールドID:</strong> <code style="background-color: #e8f5e8; padding: 3px 6px; border-radius: 3px; color: #2e7d32;">${parsedData.data.worldId}</code>`;
+                                    const worldInfoUrl = `https://vrchat.com/home/world/${parsedData.data.worldId}/info`;
+                                    worldField.innerHTML = `<strong>🌍 ワールドID:</strong> <a href="${worldInfoUrl}" target="_blank" style="color: #2e7d32; text-decoration: none;"><code style="background-color: #e8f5e8; padding: 3px 6px; border-radius: 3px; color: #2e7d32;">${parsedData.data.worldId}</code></a>`;
                                     parsedDiv.appendChild(worldField);
                                 }
                                 if (parsedData.data.instance) {
                                     const userField = document.createElement('div');
                                     userField.className = 'log-field';
-                                    userField.innerHTML = `<strong>🌍 インスタンス:</strong> <code style="background-color: #e8f4f5; padding: 3px 6px; border-radius: 3px; color: #1f4fa2;">${parsedData.data.instance}</code>`;
+                                    userField.innerHTML = `<strong>🌍 インスタンス:</strong> <code style="background-color: #e8f4f5; padding: 3px 6px; border-radius: 3px; color: #1f4fa2;">#${parsedData.data.instance}</code>`;
                                     parsedDiv.appendChild(userField);
                                 }
                                 if (parsedData.data.userId) {
                                     const userField = document.createElement('div');
                                     userField.className = 'log-field';
-                                    userField.innerHTML = `<strong>👤 インスタンスオーナー:</strong> <code style="background-color: #f3e5f5; padding: 3px 6px; border-radius: 3px; color: #7b1fa2;">${parsedData.data.userId}</code>`;
+                                    const userProfileUrl = `https://vrchat.com/home/user/${parsedData.data.userId}`;
+                                    userField.innerHTML = `<strong>👤 インスタンスオーナー:</strong> <a href="${userProfileUrl}" target="_blank" style="color: #7b1fa2; text-decoration: none;"><code style="background-color: #f3e5f5; padding: 3px 6px; border-radius: 3px; color: #7b1fa2;">${parsedData.data.userId}</code></a>`;
                                     parsedDiv.appendChild(userField);
                                 }
                                 
@@ -936,10 +939,20 @@
                         currStatus = statusData.currentStatus;
                     } else if (statusData.currentStatus.isRunning !== undefined) {
                         currStatus = statusData.currentStatus.isRunning ? '実行中' : '停止中';
+                    } else if (statusData.currentStatus.previousStatus && statusData.currentStatus.currentStatus) {
+                        // 新しい構造に対応：previousStatus と currentStatus が含まれている場合
+                        prevStatus = statusData.currentStatus.previousStatus === 'running' ? '実行中' : 
+                                   statusData.currentStatus.previousStatus === 'not_running' ? '停止中' : statusData.currentStatus.previousStatus;
+                        currStatus = statusData.currentStatus.currentStatus === 'running' ? '実行中' : 
+                                   statusData.currentStatus.currentStatus === 'not_running' ? '停止中' : statusData.currentStatus.currentStatus;
                     }
                 }
                 
-                statusField.innerHTML = `<strong>🔄 ステータス変更:</strong> <span style="color: #dc3545;">${prevStatus}</span> → <span style="color: #28a745;">${currStatus}</span>`;
+                // 状態に応じた色の設定
+                const prevStatusColor = prevStatus === '実行中' ? '#28a745' : '#dc3545';
+                const currStatusColor = currStatus === '実行中' ? '#28a745' : '#dc3545';
+                
+                statusField.innerHTML = `<strong>🔄 ステータス変更:</strong> <span style="color: ${prevStatusColor};">${prevStatus}</span> → <span style="color: ${currStatusColor};">${currStatus}</span>`;
                 detailsDiv.appendChild(statusField);
                 
                 // 変更タイプの表示
