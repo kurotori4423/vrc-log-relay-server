@@ -66,8 +66,8 @@
             cursor: not-allowed;
         }
         .message { 
-            margin: 8px 0; 
-            padding: 12px; 
+            margin: 6px 0; 
+            padding: 8px 12px; 
             border-left: 4px solid #007bff; 
             background-color: white;
             border-radius: 6px;
@@ -90,8 +90,8 @@
         .message-header {
             display: flex;
             align-items: center;
-            margin-bottom: 8px;
-            padding-bottom: 5px;
+            margin-bottom: 6px;
+            padding-bottom: 4px;
             border-bottom: 1px solid #e9ecef;
         }
         .message-type {
@@ -99,18 +99,18 @@
             font-weight: bold;
         }
         .message-content {
-            margin-top: 8px;
+            margin-top: 6px;
         }
         .log-details {
             background-color: #f8f9fa;
             border: 1px solid #e9ecef;
             border-radius: 4px;
-            padding: 10px;
-            margin: 8px 0;
+            padding: 8px;
+            margin: 6px 0;
         }
         .log-field {
-            margin: 4px 0;
-            padding: 3px 0;
+            margin: 3px 0;
+            padding: 2px 0;
         }
         .log-field strong {
             color: #495057;
@@ -121,8 +121,8 @@
             background-color: #ffffff;
             border: 1px solid #dee2e6;
             border-radius: 3px;
-            padding: 6px 8px;
-            margin: 4px 0;
+            padding: 4px 6px;
+            margin: 3px 0;
             font-family: 'Courier New', Consolas, monospace;
             font-size: 12px;
             color: #495057;
@@ -590,6 +590,45 @@
             typeSpan.style.color = color;
             
             headerDiv.appendChild(timestamp);
+            
+            // ログレベルバッジを追加（VRChatログメッセージの場合のみ）
+            if (messageType === 'log_message' && message.data && message.data.raw && message.data.raw.level) {
+                const level = message.data.raw.level.toLowerCase();
+                const levelBadge = document.createElement('span');
+                levelBadge.className = 'level-badge';
+                levelBadge.textContent = message.data.raw.level;
+                levelBadge.style.marginLeft = '8px';
+                levelBadge.style.marginRight = '8px';
+                levelBadge.style.padding = '2px 8px';
+                levelBadge.style.borderRadius = '12px';
+                levelBadge.style.fontSize = '11px';
+                levelBadge.style.fontWeight = 'bold';
+                levelBadge.style.textTransform = 'uppercase';
+                
+                // レベルに応じた色設定
+                switch(level) {
+                    case 'info':
+                        levelBadge.style.backgroundColor = '#e3f2fd';
+                        levelBadge.style.color = '#1976d2';
+                        break;
+                    case 'warning':
+                    case 'warn':
+                        levelBadge.style.backgroundColor = '#fff8e1';
+                        levelBadge.style.color = '#f57c00';
+                        break;
+                    case 'error':
+                        levelBadge.style.backgroundColor = '#ffebee';
+                        levelBadge.style.color = '#d32f2f';
+                        break;
+                    default:
+                        levelBadge.style.backgroundColor = '#f5f5f5';
+                        levelBadge.style.color = '#666';
+                        break;
+                }
+                
+                headerDiv.appendChild(levelBadge);
+            }
+            
             headerDiv.appendChild(typeSpan);
             
             // メッセージ内容部分
@@ -602,24 +641,12 @@
                 const detailsDiv = document.createElement('div');
                 detailsDiv.className = 'log-details';
                 
-                // レベルを表示
-                if (logData.raw && logData.raw.level) {
-                    const levelDiv = document.createElement('div');
-                    levelDiv.className = 'log-field';
-                    
-                    const levelSpan = document.createElement('span');
-                    levelSpan.innerHTML = `<strong>📊 レベル:</strong> ${logData.raw.level}`;
-                    levelDiv.appendChild(levelSpan);
-                    
-                    detailsDiv.appendChild(levelDiv);
-                }
-                
                 // 元のログ行（rawデータから取得）- ラベルなし
                 if (logData.raw && logData.raw.content) {
                     const codeDiv = document.createElement('div');
                     codeDiv.className = 'log-code';
                     codeDiv.textContent = logData.raw.content;
-                    codeDiv.style.margin = '8px 0 4px 0';
+                    codeDiv.style.margin = '6px 0 3px 0';
                     
                     detailsDiv.appendChild(codeDiv);
                 }
@@ -629,7 +656,7 @@
                     const messageDiv = document.createElement('div');
                     messageDiv.className = 'log-code';
                     messageDiv.textContent = logData.message;
-                    messageDiv.style.margin = '4px 0';
+                    messageDiv.style.margin = '3px 0';
                     messageDiv.style.backgroundColor = '#e8f4fd';
                     messageDiv.style.borderLeft = '3px solid #007bff';
                     messageDiv.style.paddingLeft = '10px';
@@ -669,7 +696,7 @@
                     
                     const parsedDiv = document.createElement('div');
                     parsedDiv.className = 'log-details';
-                    parsedDiv.style.marginTop = '5px';
+                    parsedDiv.style.marginTop = '4px';
                     parsedDiv.style.backgroundColor = '#ffffff';
                     parsedDiv.style.border = '1px solid #dee2e6';
                     
