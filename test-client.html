@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VRChat Log Relay Test Client</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .connected { background-color: #d4edda; color: #155724; }
+        .disconnected { background-color: #f8d7da; color: #721c24; }
+        .log-area { border: 1px solid #ccc; height: 400px; overflow-y: auto; padding: 10px; margin: 10px 0; background-color: #f8f9fa; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+        .message { margin: 5px 0; padding: 5px; border-left: 3px solid #007bff; }
+        .timestamp { color: #666; font-size: 0.9em; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>VRChat Log Relay Test Client</h1>
+        
+        <div id="status" class="status disconnected">未接続</div>
+        
+        <div>
+            <button id="connectBtn" onclick="connect()">接続</button>
+            <button id="disconnectBtn" onclick="disconnect()" disabled>切断</button>
+            <button onclick="clearLogs()">ログクリア</button>
+        </div>
+        
+        <div id="logArea" class="log-area"></div>
+        
+        <div>
+            <h3>接続情報</h3>
+            <p>WebSocketサーバー: ws://localhost:8080</p>
+            <p>HTTPサーバー: http://localhost:3001</p>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        const statusDiv = document.getElementById('status');
+        const logArea = document.getElementById('logArea');
+        const connectBtn = document.getElementById('connectBtn');
+        const disconnectBtn = document.getElementById('disconnectBtn');
+
+        function connect() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                console.log('Already connected');
+                return;
+            }
+
+            ws = new WebSocket('ws://localhost:8080');
+            
+            ws.onopen = function(event) {
+                console.log('WebSocket connected');
+                statusDiv.textContent = '接続中';
+                statusDiv.className = 'status connected';
+                connectBtn.disabled = true;
+                disconnectBtn.disabled = false;
+                
+                addLog('システム', 'WebSocketサーバーに接続しました', 'info');
+            };
+
+            ws.onmessage = function(event) {
+                console.log('Message received:', event.data);
+                try {
+                    const message = JSON.parse(event.data);
+                    addLog(message.type || 'メッセージ', JSON.stringify(message, null, 2), 'message');
+                } catch (e) {
+                    addLog('RAW', event.data, 'raw');
+                }
+            };
+
+            ws.onclose = function(event) {
+                console.log('WebSocket closed', event);
+                statusDiv.textContent = '切断';
+                statusDiv.className = 'status disconnected';
+                connectBtn.disabled = false;
+                disconnectBtn.disabled = true;
+                
+                addLog('システム', `WebSocket接続が切断されました (コード: ${event.code})`, 'error');
+            };
+
+            ws.onerror = function(error) {
+                console.error('WebSocket error:', error);
+                addLog('エラー', 'WebSocket接続エラー', 'error');
+            };
+        }
+
+        function disconnect() {
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+        }
+
+        function addLog(type, content, level = 'info') {
+            const logEntry = document.createElement('div');
+            logEntry.className = 'message';
+            
+            const timestamp = document.createElement('span');
+            timestamp.className = 'timestamp';
+            timestamp.textContent = new Date().toLocaleTimeString();
+            
+            const typeSpan = document.createElement('strong');
+            typeSpan.textContent = `[${type}] `;
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.textContent = content;
+            
+            logEntry.appendChild(timestamp);
+            logEntry.appendChild(document.createTextNode(' '));
+            logEntry.appendChild(typeSpan);
+            logEntry.appendChild(contentDiv);
+            
+            logArea.appendChild(logEntry);
+            logArea.scrollTop = logArea.scrollHeight;
+        }
+
+        function clearLogs() {
+            logArea.innerHTML = '';
+        }
+
+        // ページ読み込み時に自動接続
+        window.onload = function() {
+            addLog('システム', 'テストクライアントを開始しました', 'info');
+        };
+    </script>
+</body>
+</html>

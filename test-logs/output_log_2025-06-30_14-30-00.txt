@@ -1,0 +1,19 @@
+2025-06-30T14:30:00.123 - [Behaviour] Application Started
+2025-06-30T14:30:01.456 - [NetworkManager] Initializing network connection
+2025-06-30T14:30:02.789 - [Authentication] User authentication successful
+2025-06-30T14:30:03.012 - [Behaviour] Joining or Creating Room: wrld_12345abc-5678-90ef-abc1-234567890abc
+2025-06-30T14:30:04.345 - [RoomManager] Entering Room: Test World - v1.0
+2025-06-30T14:30:05.678 - [Behaviour] OnPlayerJoined: TestUser123
+2025-06-30T14:30:06.901 - [UdonBehaviour] [UdonScript] Hello World from Udon!
+2025-06-30T14:30:07.234 - [Networking] Connected to voice server
+2025-06-30T14:30:08.567 - [Audio] Microphone initialized
+2025-06-30T14:30:09.890 - [Behaviour] Player avatar loaded
+2025-06-30T14:30:10.123 - [Behaviour] User joined world: MyTestWorld
+2025-06-30T14:30:11.456 - [UdonBehaviour] [MyScript] Debug: Player count = 5
+2025-06-30T14:30:12.789 - [Networking] WebSocket connection established
+2025-06-30T14:31:01.123 - [Behaviour] New test log entry
+2025-06-30T14:31:02.456 - [UdonBehaviour] [TestScript] Debug message from Udon
+2025-06-30T14:35:01.123 - [Behaviour] WebSocket client connection test
+2025-06-30T14:35:02.456 - [UdonBehaviour] [TestScript] Realtime log relay test message
+2025-06-30T14:40:01.123 - [Behaviour] WebSocket connection test in progress
+2025-06-30T14:40:02.456 - [UdonBehaviour] [TestScript] Testing real-time message relay

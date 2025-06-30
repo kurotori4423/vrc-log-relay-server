@@ -128,8 +128,14 @@ export class VRChatLogWatcher extends EventEmitter {
       
       // 3. ディレクトリ監視を開始（ディレクトリが存在する場合）
       if (this.logDirectory && fsSync.existsSync(this.logDirectory)) {
+        logger.debug('Starting directory and file watching', { logDirectory: this.logDirectory });
         await this.startDirectoryWatching();
         await this.startLogFileWatching();
+      } else {
+        logger.warn('Skipping file watching - directory not found', { 
+          logDirectory: this.logDirectory,
+          exists: this.logDirectory ? fsSync.existsSync(this.logDirectory) : false
+        });
       }
 
       logger.info('VRChat log watching started successfully');
@@ -526,14 +532,25 @@ export class VRChatLogWatcher extends EventEmitter {
       return;
     }
 
-    // 自動検出
-    const localAppData = process.env.LOCALAPPDATA;
-    if (!localAppData) {
-      throw new Error('LOCALAPPDATA environment variable not found');
+    // 自動検出 - VRChatは%USERPROFILE%\AppData\LocalLowに配置される
+    const userProfile = process.env.USERPROFILE;
+    logger.debug('USERPROFILE environment variable', { userProfile });
+    
+    if (!userProfile) {
+      throw new Error('USERPROFILE environment variable not found');
     }
 
-    this.logDirectory = path.join(localAppData, 'Low', 'VRChat', 'VRChat');
-    logger.info('Auto-detected log directory', { logDirectory: this.logDirectory });
+    this.logDirectory = path.join(userProfile, 'AppData', 'LocalLow', 'VRChat', 'VRChat');
+    const dirExists = fsSync.existsSync(this.logDirectory);
+    
+    logger.info('Auto-detected log directory', { 
+      logDirectory: this.logDirectory,
+      exists: dirExists
+    });
+    
+    if (!dirExists) {
+      logger.warn('Auto-detected log directory does not exist', { logDirectory: this.logDirectory });
+    }
   }
 
   /**
@@ -606,6 +623,7 @@ export class VRChatLogWatcher extends EventEmitter {
     }
 
     logger.info('Starting log file watching');
+    logger.debug('Starting log file watching - detailed', { logDirectory: this.logDirectory });
     await this.updateLogFileWatching();
   }
 
@@ -616,6 +634,8 @@ export class VRChatLogWatcher extends EventEmitter {
     if (!this.logDirectory) return;
 
     try {
+      logger.debug('Updating log file watching', { logDirectory: this.logDirectory });
+      
       // 現在のログファイル一覧を取得
       const files = await this.scanLogFiles();
       
@@ -653,7 +673,13 @@ export class VRChatLogWatcher extends EventEmitter {
     if (!this.logDirectory) return [];
 
     try {
+      logger.debug('Scanning log files', { logDirectory: this.logDirectory });
       const files = await fs.readdir(this.logDirectory);
+      logger.debug('Found files in directory', { 
+        totalFiles: files.length,
+        files: files.slice(0, 10) // 最初の10ファイルのみ表示
+      });
+      
       const logFiles: LogFileInfo[] = [];
 
       for (const fileName of files) {
@@ -676,6 +702,11 @@ export class VRChatLogWatcher extends EventEmitter {
         }
       }
 
+      logger.debug('Scanned log files result', { 
+        logFileCount: logFiles.length,
+        logFiles: logFiles.map(f => ({ fileName: f.fileName, size: f.size }))
+      });
+      
       return logFiles;
     } catch (error) {
       logger.error('Failed to scan log files', error);
@@ -692,29 +723,50 @@ export class VRChatLogWatcher extends EventEmitter {
     // 1. 時刻でソート（新しい順）
     const sorted = [...files].sort((a, b) => b.timestamp - a.timestamp);
     
-    // 2. グループ期間に基づく選択
-    const result: LogFileInfo[] = [];
-    let lastTimestamp = 0;
+    logger.debug('Sorted log files', {
+      sortedFiles: sorted.map(f => ({
+        fileName: f.fileName,
+        timestamp: f.timestamp,
+        date: new Date(f.timestamp),
+        size: f.size
+      }))
+    });
     
-    for (const file of sorted) {
-      if (result.length === 0) {
-        result.push(file);
-        lastTimestamp = file.timestamp;
-        continue;
-      }
+    // 2. 最新ファイルを必ず含める
+    const result: LogFileInfo[] = [sorted[0]];
+    logger.debug('Selected first file (always included)', { fileName: sorted[0].fileName });
+    
+    // 3. グループ期間内の連続するファイルを追加
+    for (let i = 1; i < sorted.length && result.length < this.config.maxFiles; i++) {
+      const currentFile = sorted[i];
+      const previousFile = sorted[i - 1];
       
-      // グループ期間内のファイルを追加
-      if (lastTimestamp - file.timestamp <= this.config.groupPeriod * 1000) {
-        result.unshift(file); // 古い順に並べる
+      const timeDiff = previousFile.timestamp - currentFile.timestamp;
+      const groupPeriodMs = this.config.groupPeriod * 1000;
+      
+      logger.debug('Checking file for group period', {
+        fileName: currentFile.fileName,
+        timeDiff,
+        groupPeriodMs,
+        withinPeriod: timeDiff <= groupPeriodMs
+      });
+      
+      if (timeDiff <= groupPeriodMs) {
+        result.push(currentFile);
+        logger.debug('Added file to group', { fileName: currentFile.fileName });
       } else {
-        // 新しいグループ開始 - 古いファイルは破棄
-        result.length = 0;
-        result.push(file);
-        lastTimestamp = file.timestamp;
+        // グループ期間を超えた場合は終了
+        logger.debug('Group period exceeded, stopping selection');
+        break;
       }
-      
-      if (result.length >= this.config.maxFiles) break;
     }
+    
+    // 4. 時刻順に並び替え（古い順）
+    result.sort((a, b) => a.timestamp - b.timestamp);
+    
+    logger.debug('Final selected files', { 
+      selectedFiles: result.map(f => f.fileName)
+    });
     
     return result;
   }

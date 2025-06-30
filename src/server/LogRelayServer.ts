@@ -528,6 +528,15 @@ export class LogRelayServer extends EventEmitter {
    * Express ルート設定
    */
   private setupExpressRoutes(): void {
+    // 静的ファイル配信 (publicディレクトリ)
+    const publicPath = path.resolve(process.cwd(), 'public');
+    this.expressApp.use(express.static(publicPath));
+    
+    // ルートパスでindex.htmlを提供
+    this.expressApp.get('/', (req, res) => {
+      res.sendFile(path.join(publicPath, 'index.html'));
+    });
+
     // ヘルスチェック
     this.expressApp.get('/health', (req, res) => {
       res.json({

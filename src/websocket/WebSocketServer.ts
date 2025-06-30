@@ -42,6 +42,13 @@ export class WebSocketServer extends EventEmitter {
         skipUTF8Validation: false
       };
 
+      logger.debug('WebSocket server options', { 
+        hasHttpServer: !!httpServer,
+        port: wsOptions.port,
+        host: wsOptions.host,
+        options: wsOptions
+      });
+
       this.wss = new WSServer(wsOptions);
 
       // イベントリスナーの設定
@@ -205,6 +212,12 @@ export class WebSocketServer extends EventEmitter {
     try {
       // 接続元IPアドレスの検証
       const clientIP = req.socket.remoteAddress;
+      logger.debug('New WebSocket connection attempt', { 
+        clientIP,
+        url: req.url,
+        headers: req.headers
+      });
+      
       if (!clientIP || !this.isValidClientIP(clientIP)) {
         logger.warn('Unauthorized connection attempt', { clientIP });
         ws.close(1008, 'Unauthorized');

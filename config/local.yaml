@@ -1,0 +1,13 @@
+# VRChat Log Relay Server - ローカル設定
+# 開発者固有の設定（このファイルはGitに含めません）
+
+# 実際のVRChatログ設定
+vrchat:
+  logDirectory: null  # nullにすると自動検出される
+  monitoring:
+    groupPeriod: 5              # 短いグループ期間（テスト用）
+    maxFiles: 2                 # テスト用は少なめ
+
+# ログレベルをより詳細に
+logging:
+  level: "debug"

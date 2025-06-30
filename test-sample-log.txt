@@ -1,0 +1,10 @@
+2023-12-15 22:15:32.123 - [Behaviour] Joining or Creating Room: wrld_12345abc-5678-90ef-abc1-234567890abc
+2023-12-15 22:15:33.456 - [Behaviour] OnApplicationStart
+2023-12-15 22:15:34.789 - [Networking] API call successful
+2023-12-15 22:15:35.012 - [RoomManager] Entering Room: Test World
+2023-12-15 22:15:36.345 - [Behaviour] Udon script started
+2023-12-15 22:15:37.678 - [UdonBehaviour] [Player] Hello from Udon!
+2023-12-15 22:15:38.901 - [Player] User joined: TestUser123
+2023-12-15 22:15:40.234 - [Network] Connected to master server
+2023-12-15 22:15:41.567 - [Audio] Microphone enabled
+2023-12-15 22:15:42.890 - [Behaviour] Player movement detected
