@@ -30,14 +30,9 @@ VRChatのログファイルをリアルタイムで監視し、WebSocketを通�
 
 ```mermaid
 graph TD
-    VRChat["VRChat(VRChat.exe)"]
-    LogFiles["Log Files(output_log_*.txt)"]
-    RelayServer["VRChat Log Relay Server(Node.js)"]
-    Clients["WebSocket Clients(Browser, Tools, etc.)"]
-
-    VRChat-->|1. ログファイル出力|LogFiles
-    LogFiles-->|2. ログファイルを監視・解析|RelayServer
-    RelayServer-->|3. 配信 / 4. ログ・ステータス通知|Clients
+    VRChat[VRChat] -->|ログファイル出力| LogFiles[Log Files]
+    LogFiles -->|監視・解析| RelayServer[Log Relay Server]
+    RelayServer -->|配信| Clients[WebSocket Clients]
 ```
 
 ## インストールと実行方法
