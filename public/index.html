@@ -45,6 +45,8 @@
             border-radius: 4px;
             font-family: monospace;
             font-size: 12px;
+            scroll-behavior: smooth;
+            transition: scroll-top 0.3s ease-out;
         }
         button { 
             padding: 10px 20px; 
@@ -219,6 +221,13 @@
                     <span class="toggle-slider"></span>
                 </div>
             </label>
+            <label class="toggle-label">
+                📜 自動スクロール
+                <div class="toggle-switch">
+                    <input type="checkbox" id="autoScrollToggle" checked onchange="toggleAutoScroll()">
+                    <span class="toggle-slider"></span>
+                </div>
+            </label>
         </div>
         
         <div class="info-section" style="margin: 15px 0;">
@@ -316,11 +325,68 @@
         const debugToggle = document.getElementById('debugToggle');
 
         let debugMode = false; // デバッグモードの状態
+        let autoScrollEnabled = true; // 自動スクロールの状態
 
         // デバッグ用のログ関数
         function debugLog(...args) {
             if (debugMode) {
                 console.log(...args);
+            }
+        }
+
+        // 自動スクロールのオン・オフを切り替え
+        function toggleAutoScroll() {
+            const toggle = document.getElementById('autoScrollToggle');
+            autoScrollEnabled = toggle.checked;
+            addLog('システム', `自動スクロール: ${autoScrollEnabled ? 'ON' : 'OFF'}`, 'info');
+            
+            // 自動スクロールがオンになった場合、即座に最下部にスクロール
+            if (autoScrollEnabled) {
+                // より速いスクロールのために、直接スクロール位置を設定
+                logArea.scrollTop = logArea.scrollHeight;
+                debugLog('Auto scroll toggle - immediate scroll to bottom');
+            }
+        }
+
+        // 自動スクロールを実行
+        function performAutoScroll() {
+            if (autoScrollEnabled) {
+                // requestAnimationFrameを使用してスムーズにスクロール
+                const scrollToBottom = () => {
+                    const targetScrollTop = logArea.scrollHeight - logArea.clientHeight;
+                    const currentScrollTop = logArea.scrollTop;
+                    const distance = targetScrollTop - currentScrollTop;
+                    
+                    // 距離が大きい場合（200px以上）は即座にスクロール
+                    if (Math.abs(distance) > 200) {
+                        logArea.scrollTop = targetScrollTop;
+                        debugLog('Auto scroll completed (instant for large distance)');
+                        return;
+                    }
+                    
+                    if (Math.abs(distance) < 2) {
+                        // 十分近い場合は直接設定
+                        logArea.scrollTop = targetScrollTop;
+                        debugLog('Auto scroll completed');
+                        return;
+                    }
+                    
+                    // 段階的にスクロール（より速いイージング効果）
+                    const step = distance * 0.6; // 60%ずつ移動（より速く）
+                    logArea.scrollTop = currentScrollTop + step;
+                    
+                    // 次のフレームで続行
+                    requestAnimationFrame(scrollToBottom);
+                };
+                
+                // DOM更新後すぐにスクロール実行
+                setTimeout(() => {
+                    scrollToBottom();
+                }, 10); // 遅延を50msから10msに短縮
+                
+                debugLog('Auto scroll initiated');
+            } else {
+                debugLog('Auto scroll skipped - disabled');
             }
         }
 
@@ -857,7 +923,8 @@
             }
             
             logArea.appendChild(logEntry);
-            logArea.scrollTop = logArea.scrollHeight;
+            
+            performAutoScroll();
         }
 
         function shouldShowMessage(messageType, element) {
@@ -1071,7 +1138,8 @@
             logEntry.appendChild(contentDiv);
             
             logArea.appendChild(logEntry);
-            logArea.scrollTop = logArea.scrollHeight;
+            
+            performAutoScroll();
         }
 
         function clearLogs() {
@@ -1136,6 +1204,12 @@
             if (debugToggle) {
                 debugToggle.checked = debugMode;
                 toggleDebug(); // 初期状態を適用
+            }
+            
+            // 自動スクロールトグルの初期状態を設定
+            const autoScrollToggle = document.getElementById('autoScrollToggle');
+            if (autoScrollToggle) {
+                autoScrollToggle.checked = autoScrollEnabled;
             }
             
             // デバッグモードの場合、フィルタ要素をチェック
