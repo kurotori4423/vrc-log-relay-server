@@ -527,30 +527,29 @@
                     detailsDiv.appendChild(parsedField);
                 }
                 
-                // デバッグ情報: 完全なメッセージ構造（デバッグモードがONの場合のみ表示）
-                if (debugMode) {
-                    const debugField = document.createElement('div');
-                    debugField.className = 'log-field debug-info';
-                    debugField.innerHTML = `<strong>🔧 デバッグ情報:</strong>`;
-                    
-                    const debugDiv = document.createElement('div');
-                    debugDiv.className = 'log-details';
-                    debugDiv.style.marginTop = '5px';
-                    debugDiv.style.backgroundColor = '#f8f9fa';
-                    debugDiv.style.border = '1px solid #dee2e6';
-                    debugDiv.style.fontSize = '11px';
-                    
-                    const debugPre = document.createElement('pre');
-                    debugPre.style.margin = '0';
-                    debugPre.style.padding = '8px';
-                    debugPre.style.whiteSpace = 'pre-wrap';
-                    debugPre.style.fontFamily = 'Courier New, Consolas, monospace';
-                    debugPre.textContent = JSON.stringify(logData, null, 2);
-                    
-                    debugDiv.appendChild(debugPre);
-                    debugField.appendChild(debugDiv);
-                    detailsDiv.appendChild(debugField);
-                }
+                // デバッグ情報: 完全なメッセージ構造（常に作成、表示・非表示はCSSで制御）
+                const debugField = document.createElement('div');
+                debugField.className = 'log-field debug-info';
+                debugField.style.display = debugMode ? 'block' : 'none';
+                debugField.innerHTML = `<strong>🔧 デバッグ情報:</strong>`;
+                
+                const debugDiv = document.createElement('div');
+                debugDiv.className = 'log-details';
+                debugDiv.style.marginTop = '5px';
+                debugDiv.style.backgroundColor = '#f8f9fa';
+                debugDiv.style.border = '1px solid #dee2e6';
+                debugDiv.style.fontSize = '11px';
+                
+                const debugPre = document.createElement('pre');
+                debugPre.style.margin = '0';
+                debugPre.style.padding = '8px';
+                debugPre.style.whiteSpace = 'pre-wrap';
+                debugPre.style.fontFamily = 'Courier New, Consolas, monospace';
+                debugPre.textContent = JSON.stringify(logData, null, 2);
+                
+                debugDiv.appendChild(debugPre);
+                debugField.appendChild(debugDiv);
+                detailsDiv.appendChild(debugField);
                 
                 contentDiv.appendChild(detailsDiv);
                 
@@ -581,6 +580,30 @@
                     detailsDiv.appendChild(timeField);
                 }
                 
+                // デバッグ情報: 完全なメッセージ構造（常に作成、表示・非表示はCSSで制御）
+                const debugField = document.createElement('div');
+                debugField.className = 'log-field debug-info';
+                debugField.style.display = debugMode ? 'block' : 'none';
+                debugField.innerHTML = `<strong>🔧 デバッグ情報:</strong>`;
+                
+                const debugDiv = document.createElement('div');
+                debugDiv.className = 'log-details';
+                debugDiv.style.marginTop = '5px';
+                debugDiv.style.backgroundColor = '#f8f9fa';
+                debugDiv.style.border = '1px solid #dee2e6';
+                debugDiv.style.fontSize = '11px';
+                
+                const debugPre = document.createElement('pre');
+                debugPre.style.margin = '0';
+                debugPre.style.padding = '8px';
+                debugPre.style.whiteSpace = 'pre-wrap';
+                debugPre.style.fontFamily = 'Courier New, Consolas, monospace';
+                debugPre.textContent = JSON.stringify(statusData, null, 2);
+                
+                debugDiv.appendChild(debugPre);
+                debugField.appendChild(debugDiv);
+                detailsDiv.appendChild(debugField);
+                
                 contentDiv.appendChild(detailsDiv);
                 
             } else {
@@ -600,6 +623,31 @@
                 pre.textContent = JSON.stringify(message, null, 2);
                 
                 detailsDiv.appendChild(pre);
+                
+                // デバッグ情報: 完全なメッセージ構造（常に作成、表示・非表示はCSSで制御）
+                const debugField = document.createElement('div');
+                debugField.className = 'log-field debug-info';
+                debugField.style.display = debugMode ? 'block' : 'none';
+                debugField.innerHTML = `<strong>🔧 デバッグ情報:</strong>`;
+                
+                const debugDiv = document.createElement('div');
+                debugDiv.className = 'log-details';
+                debugDiv.style.marginTop = '5px';
+                debugDiv.style.backgroundColor = '#f8f9fa';
+                debugDiv.style.border = '1px solid #dee2e6';
+                debugDiv.style.fontSize = '11px';
+                
+                const debugPre = document.createElement('pre');
+                debugPre.style.margin = '0';
+                debugPre.style.padding = '8px';
+                debugPre.style.whiteSpace = 'pre-wrap';
+                debugPre.style.fontFamily = 'Courier New, Consolas, monospace';
+                debugPre.textContent = JSON.stringify(message, null, 2);
+                
+                debugDiv.appendChild(debugPre);
+                debugField.appendChild(debugDiv);
+                detailsDiv.appendChild(debugField);
+                
                 contentDiv.appendChild(detailsDiv);
             }
             
