@@ -241,6 +241,17 @@
                     🧪 テスト
                 </label>
             </div>
+            <div style="margin-top: 10px; display: flex; gap: 10px; align-items: center;">
+                <label style="display: flex; align-items: center; gap: 5px;">
+                    🔎 キーワードフィルター:
+                    <input type="text" id="keywordFilter" placeholder="検索キーワードを入力..." 
+                           style="padding: 4px 8px; border: 1px solid #ccc; border-radius: 4px; min-width: 200px;" 
+                           oninput="applyKeywordFilter()">
+                </label>
+                <button onclick="clearKeywordFilter()" style="padding: 4px 8px; font-size: 12px;">
+                    🗑️ クリア
+                </button>
+            </div>
         </div>
         
         <div id="logArea" class="log-area">
@@ -367,11 +378,6 @@
             
             const messageType = message.type || 'メッセージ';
             
-            // フィルター設定をチェック
-            if (!shouldShowMessage(messageType)) {
-                return;
-            }
-            
             // メッセージタイプに応じて色とアイコンを設定
             let color = '#007bff';
             let icon = '📝';
@@ -402,6 +408,11 @@
             
             logEntry.style.borderLeftColor = color;
             logEntry.setAttribute('data-message-type', messageType);
+            
+            // VRChatログメッセージの場合、logData.messageをデータ属性として保存
+            if (messageType === 'log_message' && message.data && message.data.message) {
+                logEntry.setAttribute('data-message-content', message.data.message);
+            }
             
             // ヘッダー部分（タイムスタンプとタイプ）
             const headerDiv = document.createElement('div');
@@ -677,6 +688,12 @@
             logEntry.appendChild(headerDiv);
             logEntry.appendChild(contentDiv);
             
+            // フィルター設定をチェック
+            const shouldShow = shouldShowMessage(messageType) && matchesKeywordFilter(logEntry);
+            if (!shouldShow) {
+                logEntry.style.display = 'none';
+            }
+            
             logArea.appendChild(logEntry);
             logArea.scrollTop = logArea.scrollHeight;
         }
@@ -694,16 +711,57 @@
             }
         }
 
-        function toggleFilter() {
+        function matchesKeywordFilter(messageElement) {
+            const keywordInput = document.getElementById('keywordFilter');
+            const keyword = keywordInput.value.trim().toLowerCase();
+            
+            if (!keyword) {
+                return true; // キーワードが空の場合は全て表示
+            }
+            
+            // メッセージタイプを取得
+            const messageType = messageElement.getAttribute('data-message-type');
+            
+            // VRChatログメッセージの場合、logData.messageでフィルタリング
+            if (messageType === 'log_message') {
+                // メッセージの実際のコンテンツを格納する隠しデータ属性を追加予定
+                const messageContent = messageElement.getAttribute('data-message-content');
+                if (messageContent) {
+                    return messageContent.toLowerCase().includes(keyword);
+                }
+            }
+            
+            // その他のメッセージの場合、表示されているテキスト全体で検索
+            const textContent = messageElement.textContent.toLowerCase();
+            return textContent.includes(keyword);
+        }
+
+        function applyFilters() {
             const messages = logArea.querySelectorAll('.message');
             messages.forEach(message => {
                 const messageType = message.getAttribute('data-message-type') || 'system';
-                if (shouldShowMessage(messageType)) {
+                const typeMatches = shouldShowMessage(messageType);
+                const keywordMatches = matchesKeywordFilter(message);
+                
+                if (typeMatches && keywordMatches) {
                     message.style.display = 'block';
                 } else {
                     message.style.display = 'none';
                 }
             });
+        }
+
+        function toggleFilter() {
+            applyFilters();
+        }
+
+        function applyKeywordFilter() {
+            applyFilters();
+        }
+
+        function clearKeywordFilter() {
+            document.getElementById('keywordFilter').value = '';
+            applyFilters();
         }
 
         function addLog(type, content, level = 'info') {
@@ -712,8 +770,9 @@
             logEntry.setAttribute('data-message-type', 'system');
             
             // フィルター設定をチェック
-            if (!shouldShowMessage('system')) {
-                return;
+            const shouldShow = shouldShowMessage('system') && matchesKeywordFilter(logEntry);
+            if (!shouldShow) {
+                logEntry.style.display = 'none';
             }
             
             // レベルに応じて色とアイコンを設定
