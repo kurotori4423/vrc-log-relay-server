@@ -223,3 +223,8 @@ export interface EnvVarMapping {
   /** デフォルト値 */
   defaultValue?: any;
 }
+
+/**
+ * 簡易サーバー設定（後方互換性のため）
+ */
+export type ServerConfig = FullServerConfig;

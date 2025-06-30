@@ -354,5 +354,67 @@ export type StatusChangeHandler = EventHandler<{
   processInfo?: VRChatProcessInfo;
 }>;
 
+// =============================================================================
+// サーバー状態・メトリクス関連の型定義
+// =============================================================================
+
+/**
+ * サーバー状態情報
+ */
+export interface ServerStatus {
+  /** サーバー状態 */
+  state: string;
+  /** 開始時刻 */
+  startTime: Date | null;
+  /** 稼働時間（ミリ秒） */
+  uptime: number;
+  /** バージョン情報 */
+  version: string;
+  /** Node.jsバージョン */
+  nodeVersion: string;
+  /** プラットフォーム */
+  platform: string;
+  /** アーキテクチャ */
+  architecture: string;
+  /** プロセスID */
+  processId: number;
+  /** メモリ使用量 */
+  memoryUsage: NodeJS.MemoryUsage;
+  /** 設定情報 */
+  config: {
+    httpPort: number;
+    wsPort: number;
+    environment?: string;
+  };
+}
+
+/**
+ * サーバーメトリクス
+ */
+export interface ServerMetrics {
+  /** 開始時刻 */
+  startTime: Date;
+  /** 最終更新時刻 */
+  lastUpdated: Date;
+  /** 稼働時間（ミリ秒） */
+  uptime: number;
+  /** 総接続数 */
+  totalConnections: number;
+  /** 現在の接続数 */
+  connectedClients: number;
+  /** 処理済みログメッセージ数 */
+  logMessagesProcessed: number;
+  /** VRChat状態変更回数 */
+  vrchatStatusChanges: number;
+  /** エラー発生回数 */
+  errors: number;
+  /** 最新ログメッセージ時刻 */
+  lastLogMessage: Date | null;
+  /** 現在のVRChat状態 */
+  vrchatStatus: VRChatStatus;
+  /** メモリ使用量 */
+  memoryUsage: NodeJS.MemoryUsage;
+}
+
 // 設定関連の型定義をエクスポート
 export * from './config';

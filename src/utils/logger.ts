@@ -414,3 +414,8 @@ export async function cleanupOldLogs(logDirectory: string, daysToKeep: number = 
  * デフォルトロガーインスタンス
  */
 export default getLogger;
+
+/**
+ * 名前付きエクスポート（便利なアクセス用）
+ */
+export const logger = getLogger();
