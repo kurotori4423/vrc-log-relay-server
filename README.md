@@ -35,9 +35,9 @@ graph TD
     RelayServer["VRChat Log Relay Server<br>(Node.js)"]
     Clients["WebSocket Clients<br>(Browser, Tools, etc.)"]
 
-    VRChat -- "1. ログファイル出力" --> LogFiles
-    LogFiles -- "2. ログファイルを監視・解析 (VRChatLogWatcher)" --> RelayServer
-    RelayServer -- "3. 配信 / 4. ログ・ステータス通知" --> Clients
+    VRChat-->|1. ログファイル出力|LogFiles
+    LogFiles-->|2. ログファイルを監視・解析|RelayServer
+    RelayServer-->|3. 配信 / 4. ログ・ステータス通知|Clients
 ```
 
 ## インストールと実行方法
