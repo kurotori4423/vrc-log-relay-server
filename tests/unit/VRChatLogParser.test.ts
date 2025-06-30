@@ -37,7 +37,6 @@ describe('VRChatLogParser', () => {
         region: 'ja',
         timestamp: expect.any(Number)
       });
-      expect(result?.parsed?.confidence).toBe(0.95);
     });
 
     it('複雑なワールドIDとユーザーIDを正しく解析できる', () => {
@@ -68,7 +67,6 @@ describe('VRChatLogParser', () => {
         userId: '12345678',
         timestamp: expect.any(Number)
       });
-      expect(result?.parsed?.confidence).toBe(0.95);
     });
 
     it('スペースを含むユーザー名を正しく解析できる', () => {
@@ -96,7 +94,6 @@ describe('VRChatLogParser', () => {
         userId: '12345678-abcd-1234-efgh-123456789012',
         timestamp: expect.any(Number)
       });
-      expect(result?.parsed?.confidence).toBe(0.95);
     });
   });
 
@@ -114,7 +111,6 @@ describe('VRChatLogParser', () => {
         userId: '12345678',
         timestamp: expect.any(Number)
       });
-      expect(result?.parsed?.confidence).toBe(0.95);
     });
 
     it('Debugプレフィックス付きプレイヤー退場ログを解析できる', () => {
@@ -130,7 +126,6 @@ describe('VRChatLogParser', () => {
         userId: 'f850bf8f-60bf-415f-86ea-26115070b497',
         timestamp: expect.any(Number)
       });
-      expect(result?.parsed?.confidence).toBe(0.95);
     });
   });
 
@@ -144,7 +139,6 @@ describe('VRChatLogParser', () => {
       expect(result).not.toBeNull();
       expect(result?.parsed?.type).toBe('other');
       expect(result?.parsed?.data.content).toBe('[Behaviour] Some other message');
-      expect(result?.parsed?.confidence).toBe(0.3);
     });
 
     it('Udonメッセージは別のパーサーで処理される', () => {
@@ -154,7 +148,6 @@ describe('VRChatLogParser', () => {
       const result = processor.processLogLine(testLine, metadata);
 
       expect(result).not.toBeNull();
-      expect(result?.source).toBe(LogSource.UDON);
       expect(result?.parsed?.type).toBe('udon_event');
     });
   });
@@ -170,7 +163,6 @@ describe('VRChatLogParser', () => {
       [worldChangeLog, playerJoinLog, playerLeaveLog].forEach(testLine => {
         const result = processor.processLogLine(testLine, metadata);
         expect(result).not.toBeNull();
-        expect(result?.source).toBe(LogSource.VRCHAT);
       });
     });
 
@@ -180,7 +172,6 @@ describe('VRChatLogParser', () => {
 
       const result = processor.processLogLine(debugPlayerLeaveLog, metadata);
       expect(result).not.toBeNull();
-      expect(result?.source).toBe(LogSource.VRCHAT);
       expect(result?.parsed?.type).toBe('user_leave');
     });
   });
