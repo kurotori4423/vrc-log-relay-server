@@ -247,6 +247,22 @@
             background-color: #0056b3;
             border-color: #0056b3;
         }
+        
+        /* 無効化状態のスタイル */
+        .filter-section-disabled {
+            opacity: 0.5;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        
+        .filter-section-disabled .filter-btn {
+            cursor: not-allowed;
+        }
+        
+        .filter-section-disabled h5 {
+            color: #6c757d;
+        }
+        
         .toggle-label {
             display: flex;
             align-items: center;
@@ -305,7 +321,7 @@
                 <button class="filter-btn active" data-filter="filterTest" onclick="toggleFilterButton(this)">🧪 テスト</button>
             </div>
             
-            <div style="margin-top: 15px;">
+            <div style="margin-top: 15px;" id="vrchatLogTypeSection">
                 <h5>📊 VRChatログタイプフィルター</h5>
                 <div class="filter-group">
                     <button class="filter-btn active" data-filter="filterUserJoin" onclick="toggleFilterButton(this)">👋 プレイヤー参加</button>
@@ -315,7 +331,7 @@
                 </div>
             </div>
             
-            <div style="margin-top: 15px;">
+            <div style="margin-top: 15px;" id="logLevelSection">
                 <h5>📊 ログレベルフィルター</h5>
                 <div class="filter-group">
                     <button class="filter-btn active" data-filter="filterLevelInfo" onclick="toggleFilterButton(this)">ℹ️ Info</button>
@@ -451,6 +467,9 @@
         
         setInterval(updateTime, 1000);
         updateTime();
+
+        // 初期化時にVRChatフィルターセクションの状態を設定
+        updateVRChatFilterSections();
 
         function connect() {
             if (ws && ws.readyState === WebSocket.OPEN) {
@@ -1192,6 +1211,11 @@
                 checkbox.checked = button.classList.contains('active');
             }
             
+            // VRChatログフィルターの場合、詳細セクションの状態を更新
+            if (filterId === 'filterLog') {
+                updateVRChatFilterSections();
+            }
+            
             // フィルターを適用
             applyFilters();
         }
@@ -1209,7 +1233,28 @@
                 }
             }
             
+            // VRChatログフィルターの場合、詳細セクションの状態を更新
+            if (filterId === 'filterLog') {
+                updateVRChatFilterSections();
+            }
+            
             applyFilters();
+        }
+
+        function updateVRChatFilterSections() {
+            const vrchatLogButton = document.querySelector('[data-filter="filterLog"]');
+            const vrchatLogTypeSection = document.getElementById('vrchatLogTypeSection');
+            const logLevelSection = document.getElementById('logLevelSection');
+            
+            const isVRChatLogEnabled = vrchatLogButton && vrchatLogButton.classList.contains('active');
+            
+            if (isVRChatLogEnabled) {
+                vrchatLogTypeSection.classList.remove('filter-section-disabled');
+                logLevelSection.classList.remove('filter-section-disabled');
+            } else {
+                vrchatLogTypeSection.classList.add('filter-section-disabled');
+                logLevelSection.classList.add('filter-section-disabled');
+            }
         }
 
         function applyKeywordFilter() {
