@@ -222,6 +222,7 @@ export class VRChatLogWatcher extends EventEmitter {
       const processInfo = await this.detectVRChatProcess();
       const currentStatus = processInfo ? VRChatStatus.RUNNING : VRChatStatus.NOT_RUNNING;
       
+      // ステータス変更の判定
       if (currentStatus !== this.vrchatStatus) {
         const previousStatus = this.vrchatStatus;
         this.vrchatStatus = currentStatus;
@@ -247,6 +248,23 @@ export class VRChatLogWatcher extends EventEmitter {
         } else {
           await this.onVRChatStopped();
         }
+      } else if (processInfo && this.processInfo && processInfo.processId !== this.processInfo.processId) {
+        // 同じRUNNINGステータス内でのプロセスID変更
+        const previousPid = this.processInfo.processId;
+        this.processInfo = processInfo;
+        
+        logger.info('VRChat process ID changed', {
+          previousPid,
+          newPid: processInfo.processId,
+          detectionMethod: processInfo.detectionMethod
+        });
+        
+        // プロセス変更イベントを発火（起動・終了とは区別）
+        this.emit('vrchat_process_change', {
+          previousPid,
+          newProcessInfo: processInfo,
+          timestamp: Date.now()
+        });
       }
     } catch (error) {
       logger.error('Failed to check VRChat process', error);
@@ -259,8 +277,20 @@ export class VRChatLogWatcher extends EventEmitter {
   private async detectVRChatProcess(): Promise<VRChatProcessInfo | null> {
     const detectionMethods = [
       {
-        name: 'wmic_direct',
+        name: 'wmic_main_process',
         priority: 1,
+        execute: async (): Promise<VRChatProcessInfo | null> => {
+          // メインのVRChatプロセス検知（ランチャーとwmicプロセス自体を除外）
+          const { stdout } = await execAsync(
+            'wmic process where "name=\'VRChat.exe\' and not commandline like \'%launcher%\' and not commandline like \'%wmic%\'" get ProcessId,CommandLine /format:csv',
+            { timeout: 10000, encoding: 'utf8' }
+          );
+          return this.parseWmicDetailedOutput(stdout, 'wmic_main');
+        }
+      },
+      {
+        name: 'wmic_direct',
+        priority: 2,
         execute: async (): Promise<VRChatProcessInfo | null> => {
           const { stdout } = await execAsync(
             'wmic process where "name=\'VRChat.exe\'" get ProcessId /format:value',
@@ -271,7 +301,7 @@ export class VRChatLogWatcher extends EventEmitter {
       },
       {
         name: 'tasklist_filter',
-        priority: 2,
+        priority: 3,
         execute: async (): Promise<VRChatProcessInfo | null> => {
           const { stdout } = await execAsync(
             'tasklist /FI "IMAGENAME eq VRChat.exe" /NH',
@@ -281,11 +311,12 @@ export class VRChatLogWatcher extends EventEmitter {
         }
       },
       {
-        name: 'wmic_commandline',
-        priority: 3,
+        name: 'wmic_filtered',
+        priority: 4,
         execute: async (): Promise<VRChatProcessInfo | null> => {
+          // 自己参照を避けるため、異なるアプローチでVRChatを検索
           const { stdout } = await execAsync(
-            'wmic process where "commandline like \'%VRChat%\'" get ProcessId /format:value',
+            'wmic process where "name=\'VRChat.exe\' and not commandline like \'%wmic%\' and not commandline like \'%cmd%\'" get ProcessId /format:value',
             { timeout: 10000, encoding: 'utf8' }
           );
           return this.parseWmicOutput(stdout);
@@ -302,6 +333,12 @@ export class VRChatLogWatcher extends EventEmitter {
           const duration = Date.now() - startTime;
           
           if (result) {
+            // 自己参照チェック: 現在のプロセスと同じPIDでないことを確認
+            if (result.processId === process.pid) {
+              logger.debug(`Skipping self-reference: PID ${result.processId} is current process`);
+              continue;
+            }
+            
             logger.debug(`Process detected using ${method.name} in ${duration}ms`);
             return result;
           }
@@ -319,6 +356,69 @@ export class VRChatLogWatcher extends EventEmitter {
     }
     
     return null; // すべての方法で検知失敗
+  }
+
+  /**
+   * WMIC詳細出力を解析（コマンドライン情報含む）
+   */
+  private parseWmicDetailedOutput(output: string, method: string): VRChatProcessInfo | null {
+    const lines = output.split('\n').filter(line => 
+      line.trim() && 
+      !line.includes('Node,CommandLine,ProcessId') &&
+      line.includes('VRChat')
+    );
+    
+    // 複数プロセスが見つかった場合の処理
+    if (lines.length > 1) {
+      logger.debug(`Multiple VRChat processes found (${lines.length}), selecting main process`);
+      
+      // ランチャーやサブプロセスを除外してメインプロセスを選択
+      for (const line of lines) {
+        const parts = line.split(',');
+        if (parts.length >= 3) {
+          const commandLine = parts.slice(1, -1).join(',').toLowerCase();
+          const processIdStr = parts[parts.length - 1];
+          const processId = parseInt(processIdStr, 10);
+          
+          // ランチャー、installer、updater等を除外
+          if (processId > 0 && 
+              !commandLine.includes('launcher') &&
+              !commandLine.includes('installer') &&
+              !commandLine.includes('updater') &&
+              !commandLine.includes('crash') &&
+              !commandLine.includes('setup')) {
+            
+            logger.debug(`Selected main VRChat process: PID ${processId}`);
+            return {
+              processId,
+              processName: 'VRChat.exe',
+              startTime: new Date(),
+              detectionMethod: method as any
+            };
+          }
+        }
+      }
+    }
+    
+    // 単一プロセスまたはフォールバック処理
+    if (lines.length > 0) {
+      const parts = lines[0].split(',');
+      if (parts.length >= 3) {
+        const processIdStr = parts[parts.length - 1];
+        const processId = parseInt(processIdStr, 10);
+        
+        if (processId > 0) {
+          return {
+            processId,
+            processName: 'VRChat.exe',
+            startTime: new Date(),
+            detectionMethod: method as any
+          };
+        }
+      }
+    }
+    
+    return null;
   }
 
   /**
