@@ -715,12 +715,24 @@
                 const detailsDiv = document.createElement('div');
                 detailsDiv.className = 'log-details';
                 
+                // ログレベルに応じた文字色の設定
+                let logTextColor = '#000'; // デフォルトの黒色
+                if (logData.raw && logData.raw.level) {
+                    const level = logData.raw.level.toLowerCase();
+                    if (level === 'error') {
+                        logTextColor = '#dc3545'; // 赤色
+                    } else if (level === 'warning' || level === 'warn') {
+                        logTextColor = '#fd7e14'; // オレンジ色
+                    }
+                }
+                
                 // 元のログ行（rawデータから取得）- ラベルなし
                 if (logData.raw && logData.raw.content) {
                     const codeDiv = document.createElement('div');
                     codeDiv.className = 'log-code';
                     codeDiv.textContent = logData.raw.content;
                     codeDiv.style.margin = '6px 0 3px 0';
+                    codeDiv.style.color = logTextColor;
                     
                     detailsDiv.appendChild(codeDiv);
                 }
@@ -734,6 +746,7 @@
                     messageDiv.style.backgroundColor = '#e8f4fd';
                     messageDiv.style.borderLeft = '3px solid #007bff';
                     messageDiv.style.paddingLeft = '10px';
+                    messageDiv.style.color = logTextColor;
                     
                     detailsDiv.appendChild(messageDiv);
                 }
@@ -825,11 +838,22 @@
                                 
                             default:
                                 // その他のタイプは通常の表示
+                                // ログレベルに応じた文字色の設定
+                                let textColor = '#000'; // デフォルトの黒色
+                                if (logData.raw && logData.raw.level) {
+                                    const level = logData.raw.level.toLowerCase();
+                                    if (level === 'error') {
+                                        textColor = '#dc3545'; // 赤色
+                                    } else if (level === 'warning' || level === 'warn') {
+                                        textColor = '#fd7e14'; // オレンジ色
+                                    }
+                                }
+                                
                                 for (const [key, value] of Object.entries(parsedData.data)) {
                                     if (key !== 'timestamp') { // タイムスタンプは除外
                                         const fieldDiv = document.createElement('div');
                                         fieldDiv.className = 'log-field';
-                                        fieldDiv.innerHTML = `<strong>${key}:</strong> <code style="background-color: #f8f9fa; padding: 2px 4px; border-radius: 3px;">${value}</code>`;
+                                        fieldDiv.innerHTML = `<strong>${key}:</strong> <code style="background-color: #f8f9fa; padding: 2px 4px; border-radius: 3px; color: ${textColor};">${value}</code>`;
                                         parsedDiv.appendChild(fieldDiv);
                                     }
                                 }
@@ -837,11 +861,22 @@
                         }
                     } else {
                         // パースデータが標準形式でない場合の通常表示
+                        // ログレベルに応じた文字色の設定
+                        let textColor = '#000'; // デフォルトの黒色
+                        if (logData.raw && logData.raw.level) {
+                            const level = logData.raw.level.toLowerCase();
+                            if (level === 'error') {
+                                textColor = '#dc3545'; // 赤色
+                            } else if (level === 'warning' || level === 'warn') {
+                                textColor = '#fd7e14'; // オレンジ色
+                            }
+                        }
+                        
                         for (const [key, value] of Object.entries(parsedData)) {
                             if (key !== 'timestamp') { // タイムスタンプは除外
                                 const fieldDiv = document.createElement('div');
                                 fieldDiv.className = 'log-field';
-                                fieldDiv.innerHTML = `<strong>${key}:</strong> <code style="background-color: #f8f9fa; padding: 2px 4px; border-radius: 3px;">${value}</code>`;
+                                fieldDiv.innerHTML = `<strong>${key}:</strong> <code style="background-color: #f8f9fa; padding: 2px 4px; border-radius: 3px; color: ${textColor};">${value}</code>`;
                                 parsedDiv.appendChild(fieldDiv);
                             }
                         }
