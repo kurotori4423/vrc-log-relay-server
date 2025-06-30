@@ -48,12 +48,10 @@ function runParsingTests() {
     const result = processor.processLogLine(logLine, metadata);
     
     if (result) {
-      console.log(`ソース: ${result.source}`);
       console.log(`レベル: ${result.raw.level}`);
       
       if (result.parsed) {
         console.log(`パースタイプ: ${result.parsed.type}`);
-        console.log(`信頼度: ${result.parsed.confidence}`);
         console.log(`データ:`, JSON.stringify(result.parsed.data, null, 2));
       } else {
         console.log('パース結果: なし');

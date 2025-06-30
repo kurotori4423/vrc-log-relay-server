@@ -28,9 +28,7 @@ function testFixedParser() {
   
   if (result) {
     console.log(`✅ 解析成功!`);
-    console.log(`ソース: ${result.source}`);
     console.log(`パースタイプ: ${result.parsed?.type}`);
-    console.log(`信頼度: ${Math.round((result.parsed?.confidence || 0) * 100)}%`);
     console.log(`ユーザー名: ${result.parsed?.data?.userName}`);
     console.log(`ユーザーID: ${result.parsed?.data?.userId}`);
     console.log(`タグ: [${result.tags.join(', ')}]`);
@@ -54,9 +52,7 @@ function testFixedParser() {
     const testResult = processor.processLogLine(testLog, metadata);
     
     if (testResult) {
-      console.log(`ソース: ${testResult.source}`);
       console.log(`パースタイプ: ${testResult.parsed?.type}`);
-      console.log(`信頼度: ${Math.round((testResult.parsed?.confidence || 0) * 100)}%`);
     } else {
       console.log('解析失敗');
     }
