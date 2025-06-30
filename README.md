@@ -36,7 +36,7 @@ graph TD
     Clients["WebSocket Clients<br>(Browser, Tools, etc.)"]
 
     VRChat -- "1. ログファイル出力" --> LogFiles
-    LogFiles <--> |"2. ログファイルを監視・解析 (VRChatLogWatcher)"| RelayServer
+    LogFiles -- "2. ログファイルを監視・解析 (VRChatLogWatcher)" --> RelayServer
     RelayServer -- "3. 配信 / 4. ログ・ステータス通知" --> Clients
 ```
 
