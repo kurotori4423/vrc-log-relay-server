@@ -13,8 +13,8 @@
     "format": "prettier --write src/**/*.ts"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "author": "kurotori4423",
+  "license": "MIT",
   "type": "commonjs",
   "dependencies": {
     "chokidar": "^4.0.3",

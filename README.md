@@ -1,115 +1,157 @@
 # VRChat Log Relay Server
 
-VRChatのログファイルをリアルタイムで監視し、WebSocketを通じて外部アプリケーションにログ情報を中継するサーバーシステムです。
+VRChatのログファイルをリアルタイムで監視し、WebSocketを通じて外部アプリケーションにログ情報を中継するNode.js製サーバーアプリケーションです。
 
-## 🎯 概要
+## 概要
 
-VRChat Log Relay Serverは、VRChatワールドから外部アプリケーションへの間接的なデータ連携を可能にする中継サーバーです。VRChatのログファイルを監視し、リアルタイムでWebSocketクライアントに配信します。
+本ツールは、ローカルで実行されているVRChatのログ出力を監視し、その内容を整形してWebSocket経由で配信します。これにより、VRChatの内部で起きているイベント（プレイヤーの出入り、ワールド情報など）を、外部のアプリケーション（配信ツール、統計ツール、自作デバイスなど）でリアルタイムに利用することが可能になります。
 
-## ✨ 主要機能
+## 主な機能
 
-- **VRChatログ監視**: プロセス・ディレクトリ・ファイルの統合監視
-- **リアルタイム配信**: WebSocketによる低遅延配信
-- **メッセージ解析**: ログの構造化とフィルタリング
-- **管理UI**: ブラウザベースの管理画面
-- **複数クライアント対応**: 最大50の同時接続
+- **VRChatプロセスの自動監視**
+  - VRChatの起動と終了を自動的に検知し、ログ監視を開始・停止します。
 
-## 🚀 クイックスタート
+- **リアルタイムログ監視**
+  - VRChatが出力するログファイル (`output_log_*.txt`) の変更をリアルタイムに検知します。
+  - `vrc-tail`に準拠したアルゴリズムにより、複数のログファイルをインテリジェントに選択し、同時に監視します。
+
+- **WebSocketによるデータ配信**
+  - 監視したログデータを整形し、接続されているクライアントへリアルタイムに配信します。
+  - サーバーの状態（VRChatの起動/終了など）も通知します。
+
+- **WebクライアントUI**
+  - サーバーに接続し、配信されるログをリアルタイムで表示・フィルタリングできるWebベースのクライアント画面を提供します。
+  - `http://localhost:3000` にアクセスすることで利用できます。
+
+- **詳細な設定**
+  - `config`ディレクトリ内のYAMLファイルで、サーバーのポート、ログ監視の方法、プロセス監視の挙動などを細かく設定できます。
+
+## システム構成図
+
+```
++----------------------+      +---------------------------+      +------------------------+
+| VRChat               |      | VRChat Log Relay Server   |      | WebSocket Clients      |
+| (VRChat.exe)         |      | (Node.js)                 |      | (Browser, Tools, etc.) |
++----------------------+      +---------------------------+      +------------------------+
+          |                   |                           |                 ^
+          | 1. ログファイル出力 |                           |                 |
+          v                   |                           |                 |
++----------------------+      |                           |      4. ログ/ステータス配信
+| Log Files            |      |                           |                 |
+| (output_log_*.txt)   | <--> | 2. ログファイルを監視・解析     | ----------------> |
++----------------------+      |   (VRChatLogWatcher)      |                 |
+                              |                           |                 |
+                              | 3. WebSocketサーバーで配信  |                 |
+                              |   (WebSocketServer)       |                 |
+                              +---------------------------+                 |
+```
+
+## インストールと実行方法
 
 ### 前提条件
 
-- Node.js 20.x 以上
-- Windows 10/11 (VRChat環境)
+- Node.js v20.x 以上
+- Windows 10/11
 
-### インストール
+### 手順
 
+1.  **リポジトリをクローン**
+    ```bash
+    git clone https://github.com/your-username/vrc-log-relay-server.git
+    cd vrc-log-relay-server
+    ```
+
+2.  **依存関係をインストール**
+    ```bash
+    npm install
+    ```
+
+3.  **開発モードで起動**
+    - ソースコードの変更を検知して自動的に再起動します。
+    ```bash
+    npm run dev
+    ```
+
+4.  **本番用にビルドして起動**
+    ```bash
+    # TypeScriptをJavaScriptにビルド
+    npm run build
+
+    # ビルドされたコードを実行
+    npm start
+    ```
+
+サーバーが起動したら、Webブラウザで `http://localhost:3000` にアクセスすると、WebクライアントUIが表示されます。
+
+## コマンドラインオプション
+
+`npm start` または `node dist/index.js` の実行時に、以下のオプションを指定できます。
+
+| オプション                | 説明                                           | デフォルト値        |
+| ------------------------- | ---------------------------------------------- | ------------------- |
+| `-e, --env <environment>` | 実行環境 (`development`, `production`)         | `development`       |
+| `-c, --config <dir>`      | 設定ファイルが格納されているディレクトリ       | `./config`          |
+| `-p, --port <port>`       | HTTPサーバーのポート番号                       | 設定ファイルの値    |
+| `-h, --host <host>`       | サーバーがバインドするホストアドレス           | 設定ファイルの値    |
+| `-l, --log-level <level>` | ログレベル (`error`, `warn`, `info`, `debug`)  | `info`              |
+| `--help`                  | ヘルプメッセージを表示                         | -                   |
+
+**例:**
 ```bash
-# リポジトリをクローン
-git clone <repository-url>
-cd vrc-log-relay-server
+# 本番環境として起動
+npm start -- --env production
 
-# 依存関係をインストール
-npm install
-
-# 開発サーバーを起動
-npm run dev
+# ポート番号を9000番に変更して起動
+npm start -- --port 9000
 ```
 
-### ビルドと実行
+## 設定
 
-```bash
-# TypeScriptをビルド
-npm run build
+設定は `config` ディレクトリ内のYAMLファイルで行います。
 
-# プロダクションで実行
-npm start
+-   `default.yaml`: 全ての環境に適用される基本設定です。
+-   `development.yaml`: 開発環境 (`npm run dev`) での実行時に適用されます。
+-   `production.yaml`: 本番環境 (`npm start`) での実行時に適用されます。
+-   `local.yaml`: どの環境でも最優先で適用されるローカル設定です。Gitの追跡対象外なので、個人用の設定に使用します。（このファイルは自身で作成する必要があります）
+
+### 主要な設定項目 (`config/default.yaml`)
+
+| キー                               | 説明                                                                 |
+| ---------------------------------- | -------------------------------------------------------------------- |
+| `server.port`                      | HTTPサーバー（WebクライアントUI）が使用するポート番号。                |
+| `server.host`                      | サーバーが待ち受けるホストアドレス。`127.0.0.1`はローカル専用。      |
+| `websocket.port`                   | WebSocket通信が使用するポート番号。                                  |
+| `vrchat.logDirectory`              | VRChatのログディレクトリのパス。`null`の場合、自動検出を試みます。     |
+| `vrchat.monitoring.groupPeriod`    | 関連するログファイルと見なす時間（秒）。VRChat再起動時のログをまとめる。 |
+| `vrchat.processMonitoring.enabled` | VRChatプロセスの監視を有効にするか。                                 |
+| `logging.level`                    | コンソールに出力されるログの詳細度。                                 |
+| `logging.file.enabled`             | ログをファイルに保存するか。                                         |
+
+## プロジェクト構造
+
+```
+/
+├── config/              # 設定ファイル (YAML)
+├── public/              # WebクライアントUIの静的ファイル
+├── src/                 # TypeScriptソースコード
+│   ├── index.ts         # アプリケーションのエントリーポイント
+│   ├── server/          # HTTPサーバー、メインコントローラー
+│   ├── log/             # VRChatログの監視、解析ロジック
+│   ├── websocket/       # WebSocketサーバー、クライアント接続管理
+│   ├── types/           # TypeScriptの型定義
+│   └── utils/           # ユーティリティ (ロガーなど)
+├── tests/               # テストコード
+├── package.json         # プロジェクト定義、依存関係
+└── README.md            # このファイル
 ```
 
-## 📁 プロジェクト構造
+## 開発者向けコマンド
 
-```
-src/
-├── server/          # サーバーコア
-├── log/             # ログ監視・解析
-├── websocket/       # WebSocket通信
-├── types/           # TypeScript型定義
-└── utils/           # ユーティリティ
-config/              # 設定ファイル
-tests/               # テストファイル
-project_workflow/    # プロジェクト管理ドキュメント
-```
+-   `npm test`: 全てのテストを実行します。
+-   `npm run test:watch`: ファイル変更を監視してテストを再実行します。
+-   `npm run lint`: ESLintでコードの静的解析を実行します。
+-   `npm run format`: Prettierでコードをフォーマットします。
 
-## 🛠️ 開発
+## ライセンス
 
-```bash
-# 開発モード（ホットリロード）
-npm run dev
-
-# テスト実行
-npm test
-
-# テスト（ウォッチモード）
-npm run test:watch
-
-# コードフォーマット
-npm run format
-
-# リント
-npm run lint
-```
-
-## 📖 ドキュメント
-
-詳細なドキュメントは `project_workflow/` ディレクトリを参照してください：
-
-- [01_workflow.md](./project_workflow/01_workflow.md) - 開発ワークフロー
-- [02_project_overview.md](./project_workflow/02_project_overview.md) - プロジェクト概要
-- [06_api_specifications.md](./project_workflow/06_api_specifications.md) - API仕様
-
-## 🔧 設定
-
-設定ファイルは `config/` ディレクトリにあります：
-
-- `default.yaml` - デフォルト設定
-- `development.yaml` - 開発環境設定
-- `production.yaml` - 本番環境設定
-
-## 🤝 コントリビューション
-
-1. このリポジトリをフォーク
-2. フィーチャーブランチを作成 (`git checkout -b feature/amazing-feature`)
-3. 変更をコミット (`git commit -m 'Add amazing feature'`)
-4. ブランチにプッシュ (`git push origin feature/amazing-feature`)
-5. プルリクエストを作成
-
-## 📄 ライセンス
-
-このプロジェクトはISCライセンスの下で公開されています。
-
-## 🚧 開発状況
-
-現在Phase 1（基盤実装）を進行中です。進捗は [12_task_todo.md](./project_workflow/12_task_todo.md) で確認できます。
-
----
-
-**注意**: このソフトウェアはローカル環境専用です。外部ネットワークからの接続は受け付けません。
+このプロジェクトはMITライセンスの下で公開されています。
