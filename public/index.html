@@ -196,6 +196,57 @@
         input:checked + .toggle-slider:before {
             transform: translateX(26px);
         }
+        
+        /* フィルターボタンスタイル */
+        .filter-group {
+            display: flex;
+            gap: 2px;
+            flex-wrap: wrap;
+            margin-bottom: 5px;
+        }
+
+        .filter-btn {
+            padding: 6px 12px;
+            border: 1px solid #dee2e6;
+            background-color: #f8f9fa;
+            color: #6c757d;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border-radius: 0;
+            margin: 0;
+            font-family: inherit;
+        }
+
+        .filter-btn:first-child {
+            border-top-left-radius: 6px;
+            border-bottom-left-radius: 6px;
+        }
+
+        .filter-btn:last-child {
+            border-top-right-radius: 6px;
+            border-bottom-right-radius: 6px;
+        }
+
+        .filter-btn:not(:first-child) {
+            border-left: none;
+        }
+
+        .filter-btn.active {
+            background-color: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+
+        .filter-btn:hover {
+            background-color: #e9ecef;
+            border-color: #adb5bd;
+        }
+
+        .filter-btn.active:hover {
+            background-color: #0056b3;
+            border-color: #0056b3;
+        }
         .toggle-label {
             display: flex;
             align-items: center;
@@ -232,80 +283,45 @@
         
         <div class="info-section" style="margin: 15px 0;">
             <h4>🔍 メッセージフィルター</h4>
-            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                <label style="display: flex; align-items: center; gap: 5px;">
-                    <input type="checkbox" id="filterLog" checked onchange="toggleFilter()"> 
-                    📋 VRChatログ
-                </label>
-                <label style="display: flex; align-items: center; gap: 5px;">
-                    <input type="checkbox" id="filterStatus" checked onchange="toggleFilter()"> 
-                    🎮 ステータス変更
-                </label>
-                <label style="display: flex; align-items: center; gap: 5px;">
-                    <input type="checkbox" id="filterSystem" checked onchange="toggleFilter()"> 
-                    🔧 システム
-                </label>
-                <label style="display: flex; align-items: center; gap: 5px;">
-                    <input type="checkbox" id="filterTest" checked onchange="toggleFilter()"> 
-                    🧪 テスト
-                </label>
+            <!-- 隠しcheckbox（互換性のため） -->
+            <div style="display: none;">
+                <input type="checkbox" id="filterLog" checked onchange="syncButtonFromCheckbox('filterLog')">
+                <input type="checkbox" id="filterStatus" checked onchange="syncButtonFromCheckbox('filterStatus')">
+                <input type="checkbox" id="filterSystem" checked onchange="syncButtonFromCheckbox('filterSystem')">
+                <input type="checkbox" id="filterTest" checked onchange="syncButtonFromCheckbox('filterTest')">
+                <input type="checkbox" id="filterUserJoin" checked onchange="syncButtonFromCheckbox('filterUserJoin')">
+                <input type="checkbox" id="filterUserLeave" checked onchange="syncButtonFromCheckbox('filterUserLeave')">
+                <input type="checkbox" id="filterWorldChange" checked onchange="syncButtonFromCheckbox('filterWorldChange')">
+                <input type="checkbox" id="filterUnknown" checked onchange="syncButtonFromCheckbox('filterUnknown')">
+                <input type="checkbox" id="filterLevelInfo" checked onchange="syncButtonFromCheckbox('filterLevelInfo')">
+                <input type="checkbox" id="filterLevelWarning" checked onchange="syncButtonFromCheckbox('filterLevelWarning')">
+                <input type="checkbox" id="filterLevelError" checked onchange="syncButtonFromCheckbox('filterLevelError')">
+                <input type="checkbox" id="filterLevelOther" checked onchange="syncButtonFromCheckbox('filterLevelOther')">
             </div>
-            <div style="margin-top: 10px;">
+            <div class="filter-group">
+                <button class="filter-btn active" data-filter="filterLog" onclick="toggleFilterButton(this)">📋 VRChatログ</button>
+                <button class="filter-btn active" data-filter="filterStatus" onclick="toggleFilterButton(this)">🎮 ステータス変更</button>
+                <button class="filter-btn active" data-filter="filterSystem" onclick="toggleFilterButton(this)">🔧 システム</button>
+                <button class="filter-btn active" data-filter="filterTest" onclick="toggleFilterButton(this)">🧪 テスト</button>
+            </div>
+            
+            <div style="margin-top: 15px;">
                 <h5>📊 VRChatログタイプフィルター</h5>
-                <div style="margin-bottom: 8px;">
-                    <button onclick="toggleAllVRChatFilters(true)" style="padding: 3px 8px; font-size: 11px; margin-right: 5px;">
-                        ✅ 全選択
-                    </button>
-                    <button onclick="toggleAllVRChatFilters(false)" style="padding: 3px 8px; font-size: 11px;">
-                        ❌ 全解除
-                    </button>
-                </div>
-                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                    <label style="display: flex; align-items: center; gap: 5px;">
-                        <input type="checkbox" id="filterUserJoin" checked onchange="toggleFilter()"> 
-                        👋 プレイヤー参加
-                    </label>
-                    <label style="display: flex; align-items: center; gap: 5px;">
-                        <input type="checkbox" id="filterUserLeave" checked onchange="toggleFilter()"> 
-                        🚶 プレイヤー退出
-                    </label>
-                    <label style="display: flex; align-items: center; gap: 5px;">
-                        <input type="checkbox" id="filterWorldChange" checked onchange="toggleFilter()"> 
-                        🌎 ワールド変更
-                    </label>
-                    <label style="display: flex; align-items: center; gap: 5px;">
-                        <input type="checkbox" id="filterUnknown" checked onchange="toggleFilter()"> 
-                        ❓ その他
-                    </label>
+                <div class="filter-group">
+                    <button class="filter-btn active" data-filter="filterUserJoin" onclick="toggleFilterButton(this)">👋 プレイヤー参加</button>
+                    <button class="filter-btn active" data-filter="filterUserLeave" onclick="toggleFilterButton(this)">🚶 プレイヤー退出</button>
+                    <button class="filter-btn active" data-filter="filterWorldChange" onclick="toggleFilterButton(this)">🌎 ワールド変更</button>
+                    <button class="filter-btn active" data-filter="filterUnknown" onclick="toggleFilterButton(this)">❓ その他</button>
                 </div>
             </div>
-            <div style="margin-top: 10px;">
+            
+            <div style="margin-top: 15px;">
                 <h5>📊 ログレベルフィルター</h5>
-                <div style="margin-bottom: 8px;">
-                    <button onclick="toggleAllLogLevelFilters(true)" style="padding: 3px 8px; font-size: 11px; margin-right: 5px;">
-                        ✅ 全選択
-                    </button>
-                    <button onclick="toggleAllLogLevelFilters(false)" style="padding: 3px 8px; font-size: 11px;">
-                        ❌ 全解除
-                    </button>
-                </div>
-                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                    <label style="display: flex; align-items: center; gap: 5px;">
-                        <input type="checkbox" id="filterLevelInfo" checked onchange="toggleFilter()"> 
-                        ℹ️ Info
-                    </label>
-                    <label style="display: flex; align-items: center; gap: 5px;">
-                        <input type="checkbox" id="filterLevelWarning" checked onchange="toggleFilter()"> 
-                        ⚠️ Warning
-                    </label>
-                    <label style="display: flex; align-items: center; gap: 5px;">
-                        <input type="checkbox" id="filterLevelError" checked onchange="toggleFilter()"> 
-                        ❌ Error
-                    </label>
-                    <label style="display: flex; align-items: center; gap: 5px;">
-                        <input type="checkbox" id="filterLevelOther" checked onchange="toggleFilter()"> 
-                        📝 その他
-                    </label>
+                <div class="filter-group">
+                    <button class="filter-btn active" data-filter="filterLevelInfo" onclick="toggleFilterButton(this)">ℹ️ Info</button>
+                    <button class="filter-btn active" data-filter="filterLevelWarning" onclick="toggleFilterButton(this)">⚠️ Warning</button>
+                    <button class="filter-btn active" data-filter="filterLevelError" onclick="toggleFilterButton(this)">❌ Error</button>
+                    <button class="filter-btn active" data-filter="filterLevelOther" onclick="toggleFilterButton(this)">📝 その他</button>
                 </div>
             </div>
             <div style="margin-top: 10px; display: flex; gap: 10px; align-items: center;">
@@ -1165,6 +1181,37 @@
             applyFilters();
         }
 
+        function toggleFilterButton(button) {
+            // ボタンの状態を切り替え
+            button.classList.toggle('active');
+            
+            // 対応するcheckboxを更新（存在する場合）
+            const filterId = button.getAttribute('data-filter');
+            const checkbox = document.getElementById(filterId);
+            if (checkbox) {
+                checkbox.checked = button.classList.contains('active');
+            }
+            
+            // フィルターを適用
+            applyFilters();
+        }
+
+        function syncButtonFromCheckbox(filterId) {
+            // checkboxの状態に合わせてボタンを更新
+            const checkbox = document.getElementById(filterId);
+            const button = document.querySelector(`[data-filter="${filterId}"]`);
+            
+            if (checkbox && button) {
+                if (checkbox.checked) {
+                    button.classList.add('active');
+                } else {
+                    button.classList.remove('active');
+                }
+            }
+            
+            applyFilters();
+        }
+
         function applyKeywordFilter() {
             applyFilters();
         }
@@ -1257,45 +1304,6 @@
             
             addLog('システム', `デバッグモード: ${debugMode ? 'ON' : 'OFF'}`, 'info');
             debugLog('Debug mode toggled:', debugMode);
-        }
-
-        function toggleAllVRChatFilters(checked) {
-            const vrchatFilterIds = [
-                'filterUserJoin',
-                'filterUserLeave', 
-                'filterWorldChange',
-                'filterUdonEvent',
-                'filterUnknown'
-            ];
-            
-            vrchatFilterIds.forEach(id => {
-                const checkbox = document.getElementById(id);
-                if (checkbox) {
-                    checkbox.checked = checked;
-                }
-            });
-            
-            applyFilters();
-            addLog('システム', `VRChatログフィルター: ${checked ? '全選択' : '全解除'}`, 'info');
-        }
-        
-        function toggleAllLogLevelFilters(checked) {
-            const logLevelFilterIds = [
-                'filterLevelInfo',
-                'filterLevelWarning',
-                'filterLevelError',
-                'filterLevelOther'
-            ];
-            
-            logLevelFilterIds.forEach(id => {
-                const checkbox = document.getElementById(id);
-                if (checkbox) {
-                    checkbox.checked = checked;
-                }
-            });
-            
-            applyFilters();
-            addLog('システム', `ログレベルフィルター: ${checked ? '全選択' : '全解除'}`, 'info');
         }
 
         function debugFilterElements() {
