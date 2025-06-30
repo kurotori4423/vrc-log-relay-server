@@ -258,62 +258,124 @@ export class VRChatLogWatcher extends EventEmitter {
    */
   private async detectVRChatProcess(): Promise<VRChatProcessInfo | null> {
     const detectionMethods = [
-      // 方法1: wmic (最も確実)
-      async (): Promise<VRChatProcessInfo | null> => {
-        try {
-          const { stdout } = await execAsync('wmic process where "name=\'VRChat.exe\'" get ProcessId,CreationDate,ExecutablePath /format:csv');
-          const lines = stdout.trim().split('\n').filter(line => line.includes('VRChat.exe'));
-          
-          if (lines.length > 0) {
-            const parts = lines[0].split(',');
-            const processId = parseInt(parts[3], 10);
-            const executablePath = parts[2];
-            
-            return {
-              processId,
-              processName: 'VRChat.exe',
-              executablePath,
-              startTime: new Date() // CreationDateの解析は複雑なので簡略化
-            };
-          }
-        } catch (error) {
-          logger.debug('wmic detection failed', error);
+      {
+        name: 'wmic_direct',
+        priority: 1,
+        execute: async (): Promise<VRChatProcessInfo | null> => {
+          const { stdout } = await execAsync(
+            'wmic process where "name=\'VRChat.exe\'" get ProcessId /format:value',
+            { timeout: 10000, encoding: 'utf8' }
+          );
+          return this.parseWmicOutput(stdout);
         }
-        return null;
       },
-
-      // 方法2: tasklist
-      async (): Promise<VRChatProcessInfo | null> => {
-        try {
-          const { stdout } = await execAsync('tasklist /FI "IMAGENAME eq VRChat.exe" /NH');
-          const lines = stdout.trim().split('\n').filter(line => line.includes('VRChat.exe'));
-          
-          if (lines.length > 0) {
-            const parts = lines[0].split(/\s+/);
-            const processId = parseInt(parts[1], 10);
-            
-            return {
-              processId,
-              processName: 'VRChat.exe',
-              startTime: new Date()
-            };
-          }
-        } catch (error) {
-          logger.debug('tasklist detection failed', error);
+      {
+        name: 'tasklist_filter',
+        priority: 2,
+        execute: async (): Promise<VRChatProcessInfo | null> => {
+          const { stdout } = await execAsync(
+            'tasklist /FI "IMAGENAME eq VRChat.exe" /NH',
+            { timeout: 10000, encoding: 'utf8' }
+          );
+          return this.parseTasklistOutput(stdout);
         }
-        return null;
+      },
+      {
+        name: 'wmic_commandline',
+        priority: 3,
+        execute: async (): Promise<VRChatProcessInfo | null> => {
+          const { stdout } = await execAsync(
+            'wmic process where "commandline like \'%VRChat%\'" get ProcessId /format:value',
+            { timeout: 10000, encoding: 'utf8' }
+          );
+          return this.parseWmicOutput(stdout);
+        }
       }
     ];
 
-    // 各検出方法を順次試行
+    // 複数の検知手法を順番に試行（リトライ付き）
     for (const method of detectionMethods) {
-      const result = await method();
-      if (result) {
-        return result;
+      for (let retry = 0; retry < 3; retry++) {
+        try {
+          const startTime = Date.now();
+          const result = await method.execute();
+          const duration = Date.now() - startTime;
+          
+          if (result) {
+            logger.debug(`Process detected using ${method.name} in ${duration}ms`);
+            return result;
+          }
+          
+          logger.debug(`No process found with ${method.name} (${duration}ms)`);
+          break; // 成功したが見つからなかった場合はリトライしない
+        } catch (error) {
+          logger.warn(`Detection method ${method.name} failed (retry ${retry + 1}/3):`, error);
+          
+          if (retry < 2) {
+            await this.delay(1000); // 1秒待機してリトライ
+          }
+        }
       }
     }
+    
+    return null; // すべての方法で検知失敗
+  }
 
+  /**
+   * WMIC出力を解析
+   */
+  private parseWmicOutput(output: string): VRChatProcessInfo | null {
+    const lines = output.split('\n').filter(line => line.trim());
+    
+    for (const line of lines) {
+      const match = line.match(/ProcessId=(\d+)/);
+      if (match) {
+        const processId = parseInt(match[1], 10);
+        if (processId > 0) {
+          return {
+            processId,
+            processName: 'VRChat.exe',
+            startTime: new Date(),
+            detectionMethod: 'wmic'
+          };
+        }
+      }
+    }
+    
     return null;
+  }
+
+  /**
+   * Tasklist出力を解析
+   */
+  private parseTasklistOutput(output: string): VRChatProcessInfo | null {
+    const lines = output.split('\n').filter(line => line.trim());
+    
+    for (const line of lines) {
+      if (line.includes('VRChat.exe')) {
+        const parts = line.split(/\s+/);
+        if (parts.length >= 2) {
+          const processId = parseInt(parts[1], 10);
+          if (processId > 0) {
+            return {
+              processId,
+              processName: 'VRChat.exe',
+              startTime: new Date(),
+              detectionMethod: 'tasklist'
+            };
+          }
+        }
+      }
+    }
+    
+    return null;
+  }
+
+  /**
+   * 指定時間待機
+   */
+  private delay(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 
   /**

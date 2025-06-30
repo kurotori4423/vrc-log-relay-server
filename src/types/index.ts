@@ -37,6 +37,8 @@ export interface VRChatProcessInfo {
   executablePath?: string;
   /** プロセス開始時刻 */
   startTime: Date;
+  /** 検知方法 */
+  detectionMethod?: 'wmic' | 'tasklist' | 'commandline';
 }
 
 // =============================================================================
