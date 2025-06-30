@@ -561,10 +561,49 @@
                 
                 const statusField = document.createElement('div');
                 statusField.className = 'log-field';
-                const prevStatus = statusData.previousStatus || '不明';
-                const currStatus = statusData.currentStatus || '不明';
+                
+                // 状態変更の種類により表示内容を調整
+                let prevStatus = '不明';
+                let currStatus = '不明';
+                
+                if (statusData.changeType === 'vrchat_process') {
+                    // プロセス状態変更の場合
+                    const processData = statusData.data;
+                    prevStatus = processData.previousState ? '実行中' : '停止中';
+                    currStatus = processData.isRunning ? '実行中' : '停止中';
+                } else if (statusData.currentStatus) {
+                    // 一般的な状態変更の場合
+                    if (typeof statusData.currentStatus === 'string') {
+                        currStatus = statusData.currentStatus;
+                    } else if (statusData.currentStatus.isRunning !== undefined) {
+                        currStatus = statusData.currentStatus.isRunning ? '実行中' : '停止中';
+                    }
+                }
+                
                 statusField.innerHTML = `<strong>🔄 ステータス変更:</strong> <span style="color: #dc3545;">${prevStatus}</span> → <span style="color: #28a745;">${currStatus}</span>`;
                 detailsDiv.appendChild(statusField);
+                
+                // 変更タイプの表示
+                if (statusData.changeType) {
+                    const changeTypeField = document.createElement('div');
+                    changeTypeField.className = 'log-field';
+                    let changeTypeText = '';
+                    switch (statusData.changeType) {
+                        case 'vrchat_process':
+                            changeTypeText = 'VRChatプロセス';
+                            break;
+                        case 'log_directory':
+                            changeTypeText = 'ログディレクトリ';
+                            break;
+                        case 'log_monitoring':
+                            changeTypeText = 'ログ監視';
+                            break;
+                        default:
+                            changeTypeText = statusData.changeType;
+                    }
+                    changeTypeField.innerHTML = `<strong>📊 変更タイプ:</strong> ${changeTypeText}`;
+                    detailsDiv.appendChild(changeTypeField);
+                }
                 
                 if (statusData.processInfo) {
                     const processField = document.createElement('div');

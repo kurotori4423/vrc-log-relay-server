@@ -3,102 +3,102 @@
 
 # サーバー基本設定
 server:
-  port: 3000                    # HTTP サーバーポート
-  host: "127.0.0.1"            # バインドアドレス（ローカルのみ）
-  name: "VRChat Log Relay Server"
-  version: "1.0.0"
+  port: 3000                    # HTTPサーバーが待ち受けるポート番号（ブラウザからアクセスする際のポート）
+  host: "127.0.0.1"            # サーバーのバインドアドレス（127.0.0.1=ローカルPCのみからアクセス可能）
+  name: "VRChat Log Relay Server" # サーバーの識別名（ログやWeb UIで表示される名前）
+  version: "1.0.0"             # アプリケーションのバージョン番号
 
 # VRChat関連設定
 vrchat:
-  # ログディレクトリ（null = 自動検出）
+  # ログディレクトリ（null = VRChatの標準ログフォルダを自動検出）
   logDirectory: null
   
   # ファイル監視設定
   monitoring:
-    groupPeriod: 30             # ファイルグループ期間（秒）
-    maxFiles: 4                 # 最大同時監視ファイル数
-    filePattern: "^output_log_(\\d{4})-(\\d{2})-(\\d{2})_(\\d{2})-(\\d{2})-(\\d{2})\\.txt$"
-    encoding: "utf8"            # ファイルエンコーディング
+    groupPeriod: 30             # ファイルグループ期間（秒）：この期間内に作成されたログファイルを関連ファイル群として扱う
+    maxFiles: 4                 # 最大同時監視ファイル数：メモリ使用量とパフォーマンスのバランスを調整
+    filePattern: "^output_log_(\\d{4})-(\\d{2})-(\\d{2})_(\\d{2})-(\\d{2})-(\\d{2})\\.txt$" # VRChatログファイル名の正規表現パターン
+    encoding: "utf8"            # ファイル読み込み時の文字エンコーディング
   
   # プロセス監視設定
   processMonitoring:
-    enabled: true               # VRChatプロセス監視有効
-    interval: 5000              # 監視間隔（ミリ秒）
-    processName: "VRChat.exe"   # 監視対象プロセス名
-    retryLimit: 3               # 検出失敗時のリトライ数
-    detectionTimeout: 10000     # 検出タイムアウト（ミリ秒）
+    enabled: true               # VRChatプロセス監視機能を有効にするかどうか
+    interval: 2500              # VRChat.exeプロセスの存在確認を行う間隔（高速化）
+    processName: "VRChat.exe"   # 監視対象のプロセス名（Windowsの実行ファイル名）
+    retryLimit: 3               # プロセス検出に失敗した場合のリトライ回数上限
+    detectionTimeout: 10000     # プロセス検出処理のタイムアウト時間（ミリ秒）
     
-    # 静寂モード設定（ログ出力最適化）
+    # 静寂モード設定（ログ出力量の最適化）
     quietMode:
-      enabled: true             # 静寂モード有効
-      suppressDebugLogs: true   # デバッグログ抑制
+      enabled: true             # 静寂モード：不要なログ出力を抑制してパフォーマンス向上
+      suppressDebugLogs: true   # デバッグレベルのログメッセージを抑制
   
   # ディレクトリ監視設定
   directoryMonitoring:
-    enabled: true               # ディレクトリ監視有効
-    depth: 1                    # 監視階層
-    usePolling: false           # ポーリング使用（通常false）
-    pollInterval: 1000          # ポーリング間隔（usePolling=true時）
+    enabled: true               # ディレクトリ（フォルダ）の変更監視を有効にするかどうか
+    depth: 1                    # 監視する階層の深さ（1=直下のファイルのみ、2=サブフォルダまで）
+    usePolling: false           # ポーリング監視を使用するか（false=OSのファイルイベント使用、true=定期チェック）
+    pollInterval: 1000          # ポーリング使用時のチェック間隔（ミリ秒）：usePolling=true時のみ有効
 
 # WebSocket設定
 websocket:
-  port: 8080                    # WebSocketサーバーポート
-  host: "127.0.0.1"            # バインドアドレス（ローカルのみ）
+  port: 8080                    # WebSocketサーバーのポート番号（リアルタイム通信用）
+  host: "127.0.0.1"            # WebSocketサーバーのバインドアドレス（ローカル通信のみ）
   
   # 接続管理
-  maxClients: 50                # 最大同時接続数
-  pingInterval: 30000           # Ping間隔（ミリ秒）
-  pongTimeout: 10000            # Pong応答タイムアウト
+  maxClients: 50                # 同時に接続可能なクライアント数の上限
+  pingInterval: 30000           # クライアントの生存確認を行う間隔（ミリ秒）
+  pongTimeout: 10000            # クライアントからの応答待ちタイムアウト時間（ミリ秒）
   
   # パフォーマンス設定
-  compression: false            # 圧縮無効（ローカル通信）
-  perMessageDeflate: false      # メッセージ単位圧縮無効
-  maxPayload: 1048576           # 最大ペイロードサイズ（1MB）
+  compression: false            # データ圧縮機能を無効化（ローカル通信では不要でCPU負荷軽減）
+  perMessageDeflate: false      # メッセージ単位での圧縮を無効化（小さなメッセージでは効果薄）
+  maxPayload: 1048576           # 1つのメッセージの最大サイズ（1MB=1024×1024バイト）
   
-  # 配信設定
+  # 配信設定（メッセージをまとめて効率的に送信）
   distributionBatch:
-    enabled: true               # バッチ配信有効
-    batchSize: 10               # バッチサイズ
-    batchTimeout: 50            # バッチタイムアウト（ミリ秒）
+    enabled: true               # バッチ配信機能を有効化（複数メッセージをまとめて送信）
+    batchSize: 20               # 1回のバッチで送信するメッセージ数の上限
+    batchTimeout: 25            # バッチがフルになるまでの最大待機時間（ミリ秒）
   
-  # ステータス配信
+  # ステータス配信（サーバー状態の変更通知）
   statusBroadcast:
-    enabled: true               # 状態変更自動配信
-    debounceInterval: 1000      # 状態変更のデバウンス間隔
+    enabled: true               # サーバー状態変更の自動配信を有効化
+    debounceInterval: 250       # 連続する状態変更をまとめる間隔（ミリ秒）
 
 # ログ設定
 logging:
   # 基本設定
-  level: "info"                 # ログレベル: debug, info, warn, error
-  format: "json"                # フォーマット: json, text
-  timestamp: true               # タイムスタンプ付与
+  level: "info"                 # ログレベル: debug（詳細）, info（一般）, warn（警告）, error（エラーのみ）
+  format: "json"                # ログ出力フォーマット: json（構造化）, text（読みやすいテキスト）
+  timestamp: true               # ログメッセージにタイムスタンプを付与するかどうか
   
   # 出力先設定
   console:
-    enabled: true               # コンソール出力有効
-    colorize: true              # 色付け有効
-    format: "text"              # コンソール用フォーマット
+    enabled: true               # コンソール（ターミナル画面）への出力を有効化
+    colorize: true              # ログレベルに応じた色付け表示を有効化
+    format: "text"              # コンソール用は読みやすいテキスト形式を使用
   
   file:
-    enabled: true               # ファイル出力有効
-    filename: "logs/server.log" # ログファイルパス
-    maxSize: "10mb"             # 最大ファイルサイズ
-    maxFiles: 5                 # 保持ファイル数
-    datePattern: "YYYY-MM-DD"   # 日付パターン
-    zippedArchive: true         # 古いファイルの圧縮
+    enabled: true               # ログファイルへの出力を有効化
+    filename: "logs/server.log" # ログファイルの保存パス（フォルダが無い場合は自動作成）
+    maxSize: "10mb"             # 1つのログファイルの最大サイズ（超過時に新ファイル作成）
+    maxFiles: 5                 # 保持するログファイルの最大数（古いファイルは自動削除）
+    datePattern: "YYYY-MM-DD"   # ログファイル名に付与する日付形式
+    zippedArchive: true         # 古いログファイルを圧縮して保存するかどうか
   
   # エラーログ分離
   errorFile:
-    enabled: true               # エラーログ分離有効
-    filename: "logs/error.log"  # エラーログファイル
-    level: "error"              # エラーレベル以上
+    enabled: true               # エラーログを別ファイルに分離する機能を有効化
+    filename: "logs/error.log"  # エラー専用ログファイルの保存パス
+    level: "error"              # エラーレベル以上のログのみ記録
   
-  # 詳細ログ設定
+  # 詳細ログ設定（カテゴリ別のログレベル調整）
   categories:
-    server: "info"              # サーバー関連
-    vrchat: "info"              # VRChat監視関連
-    websocket: "info"           # WebSocket関連
-    messages: "info"           # メッセージ処理関連
+    server: "info"              # HTTPサーバー関連のログレベル
+    vrchat: "info"              # VRChat監視機能関連のログレベル
+    websocket: "info"           # WebSocket通信関連のログレベル
+    messages: "info"           # メッセージ処理関連のログレベル
 
 # 機能有効/無効設定
 features:
@@ -130,9 +130,9 @@ performance:
   
   # ファイル監視最適化
   fileWatching:
-    stabilityThreshold: 100     # ファイル安定判定時間
-    pollInterval: 100           # ポーリング間隔
-    useNativeEvents: true       # ネイティブイベント使用
+    stabilityThreshold: 50      # ファイル安定判定時間（高速化）：ファイル変更完了を判定するまでの待機時間
+    pollInterval: 100           # ポーリング間隔（ミリ秒）：useNativeEvents=false時の定期チェック間隔
+    useNativeEvents: true       # ネイティブイベント使用：OSのファイル変更通知を使用（高効率）
 
 # ヘルスチェック設定
 healthCheck:

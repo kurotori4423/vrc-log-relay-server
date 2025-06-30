@@ -10,4 +10,4 @@ vrchat:
 
 # ログレベルをより詳細に
 logging:
-  level: "debug"
+  level: "info"
