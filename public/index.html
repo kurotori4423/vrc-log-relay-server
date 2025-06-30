@@ -379,7 +379,20 @@
             
             const timestamp = document.createElement('span');
             timestamp.className = 'timestamp';
-            timestamp.textContent = new Date().toLocaleTimeString('ja-JP');
+            
+            // VRChatログの場合はlogDataのタイムスタンプを使用
+            if (messageType === 'log_message' && message.data) {
+                const logData = message.data;
+                if (logData.raw && logData.raw.timestamp) {
+                    timestamp.textContent = new Date(logData.raw.timestamp).toLocaleTimeString('ja-JP');
+                } else if (logData.timestamp) {
+                    timestamp.textContent = new Date(logData.timestamp).toLocaleTimeString('ja-JP');
+                } else {
+                    timestamp.textContent = new Date().toLocaleTimeString('ja-JP');
+                }
+            } else {
+                timestamp.textContent = new Date().toLocaleTimeString('ja-JP');
+            }
             
             const typeSpan = document.createElement('span');
             typeSpan.className = 'message-type';
@@ -399,61 +412,49 @@
                 const detailsDiv = document.createElement('div');
                 detailsDiv.className = 'log-details';
                 
-                // 時刻（rawから取得）
-                if (logData.raw && logData.raw.timestamp) {
-                    const timeField = document.createElement('div');
-                    timeField.className = 'log-field';
-                    timeField.innerHTML = `<strong>📅 時刻:</strong> ${new Date(logData.raw.timestamp).toLocaleString('ja-JP')}`;
-                    detailsDiv.appendChild(timeField);
-                } else if (logData.timestamp) {
-                    const timeField = document.createElement('div');
-                    timeField.className = 'log-field';
-                    timeField.innerHTML = `<strong>📅 時刻:</strong> ${new Date(logData.timestamp).toLocaleString('ja-JP')}`;
-                    detailsDiv.appendChild(timeField);
-                }
-                
-                // レベル情報（あれば）
-                if (logData.raw && logData.raw.level) {
-                    const levelField = document.createElement('div');
-                    levelField.className = 'log-field';
-                    levelField.innerHTML = `<strong>📊 レベル:</strong> ${logData.raw.level}`;
-                    detailsDiv.appendChild(levelField);
-                }
-                
-                // ソース
-                if (logData.source) {
-                    const sourceField = document.createElement('div');
-                    sourceField.className = 'log-field';
-                    sourceField.innerHTML = `<strong>🔍 ソース:</strong> ${logData.source}`;
-                    detailsDiv.appendChild(sourceField);
-                }
-                
-                // 元のログ行（rawデータから取得）
-                if (logData.raw && logData.raw.content) {
-                    const lineField = document.createElement('div');
-                    lineField.className = 'log-field';
-                    lineField.innerHTML = `<strong>📝 ログ内容:</strong>`;
+                // レベルとソースを横並びで表示
+                if ((logData.raw && logData.raw.level) || logData.source) {
+                    const levelSourceDiv = document.createElement('div');
+                    levelSourceDiv.className = 'log-field';
+                    levelSourceDiv.style.display = 'flex';
+                    levelSourceDiv.style.gap = '15px';
                     
+                    if (logData.raw && logData.raw.level) {
+                        const levelSpan = document.createElement('span');
+                        levelSpan.innerHTML = `<strong>📊 レベル:</strong> ${logData.raw.level}`;
+                        levelSourceDiv.appendChild(levelSpan);
+                    }
+                    
+                    if (logData.source) {
+                        const sourceSpan = document.createElement('span');
+                        sourceSpan.innerHTML = `<strong>🔍 ソース:</strong> ${logData.source}`;
+                        levelSourceDiv.appendChild(sourceSpan);
+                    }
+                    
+                    detailsDiv.appendChild(levelSourceDiv);
+                }
+                
+                // 元のログ行（rawデータから取得）- ラベルなし
+                if (logData.raw && logData.raw.content) {
                     const codeDiv = document.createElement('div');
                     codeDiv.className = 'log-code';
                     codeDiv.textContent = logData.raw.content;
+                    codeDiv.style.margin = '8px 0 4px 0';
                     
-                    lineField.appendChild(codeDiv);
-                    detailsDiv.appendChild(lineField);
+                    detailsDiv.appendChild(codeDiv);
                 }
                 
-                // メッセージ内容（処理済み）
+                // メッセージ内容（処理済み）- 元のログ行と異なる場合のみ表示
                 if (logData.message && logData.message !== (logData.raw && logData.raw.content)) {
-                    const messageField = document.createElement('div');
-                    messageField.className = 'log-field';
-                    messageField.innerHTML = `<strong>💬 メッセージ:</strong>`;
-                    
                     const messageDiv = document.createElement('div');
                     messageDiv.className = 'log-code';
                     messageDiv.textContent = logData.message;
+                    messageDiv.style.margin = '4px 0';
+                    messageDiv.style.backgroundColor = '#e8f4fd';
+                    messageDiv.style.borderLeft = '3px solid #007bff';
+                    messageDiv.style.paddingLeft = '10px';
                     
-                    messageField.appendChild(messageDiv);
-                    detailsDiv.appendChild(messageField);
+                    detailsDiv.appendChild(messageDiv);
                 }
                 
                 // パース済み情報
