@@ -241,6 +241,35 @@
                     🧪 テスト
                 </label>
             </div>
+            <div style="margin-top: 10px;">
+                <h5>📊 VRChatログタイプフィルター</h5>
+                <div style="margin-bottom: 8px;">
+                    <button onclick="toggleAllVRChatFilters(true)" style="padding: 3px 8px; font-size: 11px; margin-right: 5px;">
+                        ✅ 全選択
+                    </button>
+                    <button onclick="toggleAllVRChatFilters(false)" style="padding: 3px 8px; font-size: 11px;">
+                        ❌ 全解除
+                    </button>
+                </div>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <label style="display: flex; align-items: center; gap: 5px;">
+                        <input type="checkbox" id="filterUserJoin" checked onchange="toggleFilter()"> 
+                        👋 プレイヤー参加
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 5px;">
+                        <input type="checkbox" id="filterUserLeave" checked onchange="toggleFilter()"> 
+                        🚶 プレイヤー退出
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 5px;">
+                        <input type="checkbox" id="filterWorldChange" checked onchange="toggleFilter()"> 
+                        🌎 ワールド変更
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 5px;">
+                        <input type="checkbox" id="filterUnknown" checked onchange="toggleFilter()"> 
+                        ❓ その他
+                    </label>
+                </div>
+            </div>
             <div style="margin-top: 10px; display: flex; gap: 10px; align-items: center;">
                 <label style="display: flex; align-items: center; gap: 5px;">
                     🔎 キーワードフィルター:
@@ -390,9 +419,43 @@
                     typeLabel = 'VRChatステータス変更';
                     break;
                 case 'log_message':
-                    color = '#17a2b8';
-                    icon = '📋';
-                    typeLabel = 'VRChatログ';
+                    // VRChatログの場合、パースタイプに応じてアイコンと色を変更
+                    // サーバーからのメッセージ構造に対応：message.data.parsed または message.parsed
+                    const parsedData = message.data?.parsed || message.parsed;
+                    if (parsedData && parsedData.type) {
+                        const parsedType = parsedData.type;
+                        switch(parsedType) {
+                            case 'user_join':
+                                color = '#28a745';
+                                icon = '👋';
+                                typeLabel = 'プレイヤー参加';
+                                break;
+                            case 'user_leave':
+                                color = '#ffc107';
+                                icon = '🚶';
+                                typeLabel = 'プレイヤー退出';
+                                break;
+                            case 'world_change':
+                                color = '#6f42c1';
+                                icon = '🌎';
+                                typeLabel = 'ワールド変更';
+                                break;
+                            case 'other':
+                                color = '#6c757d';
+                                icon = '❓';
+                                typeLabel = 'その他ログ';
+                                break;
+                            default:
+                                color = '#17a2b8';
+                                icon = '📋';
+                                typeLabel = 'VRChatログ';
+                                break;
+                        }
+                    } else {
+                        color = '#17a2b8';
+                        icon = '📋';
+                        typeLabel = 'VRChatログ';
+                    }
                     break;
                 case 'error':
                     color = '#dc3545';
@@ -409,9 +472,29 @@
             logEntry.style.borderLeftColor = color;
             logEntry.setAttribute('data-message-type', messageType);
             
-            // VRChatログメッセージの場合、logData.messageをデータ属性として保存
-            if (messageType === 'log_message' && message.data && message.data.message) {
-                logEntry.setAttribute('data-message-content', message.data.message);
+            // VRChatログメッセージの場合、データ属性を設定
+            if (messageType === 'log_message' && message.data) {
+                // メッセージ内容をデータ属性として保存（存在する場合のみ）
+                if (message.data.message) {
+                    logEntry.setAttribute('data-message-content', message.data.message);
+                }
+                
+                // パース結果のタイプがある場合はデータ属性に設定
+                // サーバーからのメッセージ構造に対応：message.data.parsed または message.parsed
+                const parsedData = message.data.parsed || message.parsed;
+                if (parsedData && parsedData.type) {
+                    logEntry.setAttribute('data-parsed-type', parsedData.type);
+                    
+                    // デバッグ用ログ
+                    if (debugMode) {
+                        console.log('Setting data-parsed-type:', parsedData.type, 'for message:', message);
+                    }
+                } else {
+                    // デバッグ用ログ
+                    if (debugMode) {
+                        console.log('No parsed type found for message:', message);
+                    }
+                }
             }
             
             // ヘッダー部分（タイムスタンプとタイプ）
@@ -453,26 +536,16 @@
                 const detailsDiv = document.createElement('div');
                 detailsDiv.className = 'log-details';
                 
-                // レベルとソースを横並びで表示
-                if ((logData.raw && logData.raw.level) || logData.source) {
-                    const levelSourceDiv = document.createElement('div');
-                    levelSourceDiv.className = 'log-field';
-                    levelSourceDiv.style.display = 'flex';
-                    levelSourceDiv.style.gap = '15px';
+                // レベルを表示
+                if (logData.raw && logData.raw.level) {
+                    const levelDiv = document.createElement('div');
+                    levelDiv.className = 'log-field';
                     
-                    if (logData.raw && logData.raw.level) {
-                        const levelSpan = document.createElement('span');
-                        levelSpan.innerHTML = `<strong>📊 レベル:</strong> ${logData.raw.level}`;
-                        levelSourceDiv.appendChild(levelSpan);
-                    }
+                    const levelSpan = document.createElement('span');
+                    levelSpan.innerHTML = `<strong>📊 レベル:</strong> ${logData.raw.level}`;
+                    levelDiv.appendChild(levelSpan);
                     
-                    if (logData.source) {
-                        const sourceSpan = document.createElement('span');
-                        sourceSpan.innerHTML = `<strong>🔍 ソース:</strong> ${logData.source}`;
-                        levelSourceDiv.appendChild(sourceSpan);
-                    }
-                    
-                    detailsDiv.appendChild(levelSourceDiv);
+                    detailsDiv.appendChild(levelDiv);
                 }
                 
                 // 元のログ行（rawデータから取得）- ラベルなし
@@ -498,11 +571,35 @@
                     detailsDiv.appendChild(messageDiv);
                 }
                 
-                // パース済み情報
-                if (logData.parsed && Object.keys(logData.parsed).length > 0) {
+                // パース済み情報（サーバーからのメッセージ構造に対応）
+                // data-parsed-type属性の設定と同じ方法で取得
+                const parsedData = message.data.parsed || message.parsed;
+                if (parsedData && Object.keys(parsedData).length > 0 && parsedData.type !== 'other') {
                     const parsedField = document.createElement('div');
                     parsedField.className = 'log-field';
-                    parsedField.innerHTML = `<strong>⚙️ 解析結果:</strong>`;
+                    
+                    // パースタイプに応じたアイコンとラベルを設定
+                    let parsedIcon = '⚙️';
+                    let parsedLabel = '解析結果';
+                    
+                    if (parsedData.type) {
+                        switch(parsedData.type) {
+                            case 'user_join':
+                                parsedIcon = '👋';
+                                parsedLabel = 'プレイヤー参加情報';
+                                break;
+                            case 'user_leave':
+                                parsedIcon = '🚶';
+                                parsedLabel = 'プレイヤー退出情報';
+                                break;
+                            case 'world_change':
+                                parsedIcon = '🌎';
+                                parsedLabel = 'ワールド変更情報';
+                                break;
+                        }
+                    }
+                    
+                    parsedField.innerHTML = `<strong>${parsedIcon} ${parsedLabel}:</strong>`;
                     
                     const parsedDiv = document.createElement('div');
                     parsedDiv.className = 'log-details';
@@ -510,12 +607,77 @@
                     parsedDiv.style.backgroundColor = '#ffffff';
                     parsedDiv.style.border = '1px solid #dee2e6';
                     
-                    // パースされた各フィールドを表示
-                    for (const [key, value] of Object.entries(logData.parsed)) {
-                        const fieldDiv = document.createElement('div');
-                        fieldDiv.className = 'log-field';
-                        fieldDiv.innerHTML = `<strong>${key}:</strong> <code style="background-color: #f8f9fa; padding: 2px 4px; border-radius: 3px;">${value}</code>`;
-                        parsedDiv.appendChild(fieldDiv);
+                    // VRChatの特定タイプに応じた特別な表示
+                    if (parsedData.type && parsedData.data) {
+                        switch(parsedData.type) {
+                            case 'user_join':
+                            case 'user_leave':
+                                // ユーザー情報を分かりやすく表示
+                                if (parsedData.data.userName) {
+                                    const userField = document.createElement('div');
+                                    userField.className = 'log-field';
+                                    userField.innerHTML = `<strong>👤 ユーザー名:</strong> <code style="background-color: #e3f2fd; padding: 3px 6px; border-radius: 3px; color: #1976d2;">${parsedData.data.userName}</code>`;
+                                    parsedDiv.appendChild(userField);
+                                }
+                                if (parsedData.data.userId) {
+                                    const idField = document.createElement('div');
+                                    idField.className = 'log-field';
+                                    idField.innerHTML = `<strong>🆔 ユーザーID:</strong> <code style="background-color: #f3e5f5; padding: 3px 6px; border-radius: 3px; color: #7b1fa2;">${parsedData.data.userId}</code>`;
+                                    parsedDiv.appendChild(idField);
+                                }
+                                break;
+                                
+                            case 'world_change':
+                                // ワールド情報を分かりやすく表示
+                                if (parsedData.data.worldId) {
+                                    const worldField = document.createElement('div');
+                                    worldField.className = 'log-field';
+                                    worldField.innerHTML = `<strong>🌍 ワールドID:</strong> <code style="background-color: #e8f5e8; padding: 3px 6px; border-radius: 3px; color: #2e7d32;">${parsedData.data.worldId}</code>`;
+                                    parsedDiv.appendChild(worldField);
+                                }
+                                if (parsedData.data.instance) {
+                                    const userField = document.createElement('div');
+                                    userField.className = 'log-field';
+                                    userField.innerHTML = `<strong>🌍 インスタンス:</strong> <code style="background-color: #e8f4f5; padding: 3px 6px; border-radius: 3px; color: #1f4fa2;">${parsedData.data.instance}</code>`;
+                                    parsedDiv.appendChild(userField);
+                                }
+                                if (parsedData.data.userId) {
+                                    const userField = document.createElement('div');
+                                    userField.className = 'log-field';
+                                    userField.innerHTML = `<strong>👤 インスタンスオーナー:</strong> <code style="background-color: #f3e5f5; padding: 3px 6px; border-radius: 3px; color: #7b1fa2;">${parsedData.data.userId}</code>`;
+                                    parsedDiv.appendChild(userField);
+                                }
+                                
+                                if (parsedData.data.region) {
+                                    const regionField = document.createElement('div');
+                                    regionField.className = 'log-field';
+                                    regionField.innerHTML = `<strong>🌏 地域:</strong> <code style="background-color: #fff3e0; padding: 3px 6px; border-radius: 3px; color: #f57c00;">${parsedData.data.region}</code>`;
+                                    parsedDiv.appendChild(regionField);
+                                }
+                                break;
+                                
+                            default:
+                                // その他のタイプは通常の表示
+                                for (const [key, value] of Object.entries(parsedData.data)) {
+                                    if (key !== 'timestamp') { // タイムスタンプは除外
+                                        const fieldDiv = document.createElement('div');
+                                        fieldDiv.className = 'log-field';
+                                        fieldDiv.innerHTML = `<strong>${key}:</strong> <code style="background-color: #f8f9fa; padding: 2px 4px; border-radius: 3px;">${value}</code>`;
+                                        parsedDiv.appendChild(fieldDiv);
+                                    }
+                                }
+                                break;
+                        }
+                    } else {
+                        // パースデータが標準形式でない場合の通常表示
+                        for (const [key, value] of Object.entries(parsedData)) {
+                            if (key !== 'timestamp') { // タイムスタンプは除外
+                                const fieldDiv = document.createElement('div');
+                                fieldDiv.className = 'log-field';
+                                fieldDiv.innerHTML = `<strong>${key}:</strong> <code style="background-color: #f8f9fa; padding: 2px 4px; border-radius: 3px;">${value}</code>`;
+                                parsedDiv.appendChild(fieldDiv);
+                            }
+                        }
                     }
                     
                     parsedField.appendChild(parsedDiv);
@@ -689,7 +851,7 @@
             logEntry.appendChild(contentDiv);
             
             // フィルター設定をチェック
-            const shouldShow = shouldShowMessage(messageType) && matchesKeywordFilter(logEntry);
+            const shouldShow = shouldShowMessage(messageType, logEntry) && matchesKeywordFilter(logEntry);
             if (!shouldShow) {
                 logEntry.style.display = 'none';
             }
@@ -698,17 +860,87 @@
             logArea.scrollTop = logArea.scrollHeight;
         }
 
-        function shouldShowMessage(messageType) {
+        function shouldShowMessage(messageType, element) {
+            // デバッグ用ログ
+            if (debugMode) {
+                console.log('shouldShowMessage called:', { messageType, element: element?.getAttribute?.('data-parsed-type') });
+            }
+            
+            // 基本的なメッセージタイプフィルタリング
+            let shouldShow = true;
+            
             switch(messageType) {
                 case 'log_message':
-                    return document.getElementById('filterLog').checked;
+                    shouldShow = document.getElementById('filterLog').checked;
+                    break;
                 case 'vrchat_status_change':
-                    return document.getElementById('filterStatus').checked;
+                    shouldShow = document.getElementById('filterStatus').checked;
+                    break;
                 case 'test':
-                    return document.getElementById('filterTest').checked;
+                    shouldShow = document.getElementById('filterTest').checked;
+                    break;
                 default:
-                    return document.getElementById('filterSystem').checked;
+                    shouldShow = document.getElementById('filterSystem').checked;
+                    break;
             }
+            
+            if (debugMode) {
+                console.log('Basic filter result:', shouldShow);
+            }
+            
+            // VRChatログメッセージの場合は、基本フィルターとVRChatログタイプフィルターの両方をチェック
+            if (messageType === 'log_message' && element) {
+                const parsedType = element.getAttribute('data-parsed-type');
+                if (debugMode) {
+                    console.log('Parsed type:', parsedType);
+                }
+                
+                // 基本的なログフィルターをチェック
+                const basicLogFilter = document.getElementById('filterLog').checked;
+                
+                // VRChatログタイプフィルターをチェック
+                let specificShow = false;
+                if (parsedType) {
+                    switch(parsedType) {
+                        case 'user_join':
+                            specificShow = document.getElementById('filterUserJoin').checked;
+                            break;
+                        case 'user_leave':
+                            specificShow = document.getElementById('filterUserLeave').checked;
+                            break;
+                        case 'world_change':
+                            specificShow = document.getElementById('filterWorldChange').checked;
+                            break;
+                        case 'other':
+                            specificShow = document.getElementById('filterUnknown').checked;
+                            break;
+                        default:
+                            specificShow = document.getElementById('filterUnknown').checked;
+                            break;
+                    }
+                } else {
+                    // パースタイプが不明な場合は「その他・不明」フィルターを適用
+                    specificShow = document.getElementById('filterUnknown').checked;
+                }
+                
+                if (debugMode) {
+                    console.log('VRChat log filter check:', {
+                        basicLogFilter,
+                        specificShow,
+                        parsedType,
+                        finalResult: basicLogFilter && specificShow
+                    });
+                }
+                
+                // 基本ログフィルターとVRChatログタイプフィルターの両方がONの場合のみ表示
+                return basicLogFilter && specificShow;
+            }
+            
+            if (debugMode) {
+                console.log('Final result:', shouldShow);
+            }
+            
+            return shouldShow;
         }
 
         function matchesKeywordFilter(messageElement) {
@@ -738,10 +970,23 @@
 
         function applyFilters() {
             const messages = logArea.querySelectorAll('.message');
+            if (debugMode) {
+                console.log('Applying filters to', messages.length, 'messages');
+            }
+            
             messages.forEach(message => {
                 const messageType = message.getAttribute('data-message-type') || 'system';
-                const typeMatches = shouldShowMessage(messageType);
+                const typeMatches = shouldShowMessage(messageType, message);
                 const keywordMatches = matchesKeywordFilter(message);
+                
+                if (debugMode) {
+                    console.log('Message filter check:', {
+                        messageType,
+                        typeMatches,
+                        keywordMatches,
+                        parsedType: message.getAttribute('data-parsed-type')
+                    });
+                }
                 
                 if (typeMatches && keywordMatches) {
                     message.style.display = 'block';
@@ -847,6 +1092,41 @@
             debugLog('Debug mode toggled:', debugMode);
         }
 
+        function toggleAllVRChatFilters(checked) {
+            const vrchatFilterIds = [
+                'filterUserJoin',
+                'filterUserLeave', 
+                'filterWorldChange',
+                'filterUdonEvent',
+                'filterUnknown'
+            ];
+            
+            vrchatFilterIds.forEach(id => {
+                const checkbox = document.getElementById(id);
+                if (checkbox) {
+                    checkbox.checked = checked;
+                }
+            });
+            
+            applyFilters();
+            addLog('システム', `VRChatログフィルター: ${checked ? '全選択' : '全解除'}`, 'info');
+        }
+
+        function debugFilterElements() {
+            const filterIds = [
+                'filterLog', 'filterStatus', 'filterSystem', 'filterTest',
+                'filterUserJoin', 'filterUserLeave', 'filterWorldChange', 
+                'filterUdonEvent', 'filterUnknown'
+            ];
+            
+            console.log('=== フィルタ要素デバッグ ===');
+            filterIds.forEach(id => {
+                const element = document.getElementById(id);
+                console.log(`${id}:`, element ? `存在 (checked: ${element.checked})` : '見つからない');
+            });
+            console.log('========================');
+        }
+
         // ページ読み込み時の初期化
         window.onload = function() {
             addLog('システム', 'VRChat Log Relay Clientを開始しました', 'success');
@@ -857,6 +1137,11 @@
                 debugToggle.checked = debugMode;
                 toggleDebug(); // 初期状態を適用
             }
+            
+            // デバッグモードの場合、フィルタ要素をチェック
+            if (debugMode) {
+                debugFilterElements();
+            }
         };
 
         // ページを離れる時にWebSocket接続を閉じる
@@ -865,6 +1150,7 @@
                 ws.close();
             }
         };
+
     </script>
 </body>
 </html>

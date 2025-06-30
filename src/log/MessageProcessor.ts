@@ -13,7 +13,6 @@ import {
   ProcessedMessage,
   ParsedLogData,
   LogLevel,
-  LogSource,
   LogMetadata
 } from '../types';
 import { logMessageProcessor } from '../utils/logger';
@@ -28,8 +27,6 @@ import { logMessageProcessor } from '../utils/logger';
 interface LogParser {
   /** パーサー名 */
   readonly name: string;
-  /** 対象とするソース */
-  readonly targetSource: LogSource;
   /** ログ行を解析 */
   parse(content: string): ParsedLogData | null;
   /** パターンマッチング */
@@ -46,26 +43,6 @@ interface BasicLogData {
   level: LogLevel;
   /** ログ内容 */
   content: string;
-  /** 推定ソース */
-  estimatedSource: LogSource;
-}
-
-/**
- * Udonログデータ
- */
-interface UdonLogData {
-  /** オブジェクト名 */
-  objectName?: string;
-  /** メソッド名 */
-  methodName?: string;
-  /** イベントタイプ */
-  eventType?: string;
-  /** パラメータ */
-  parameters?: any[];
-  /** カスタムデータ */
-  customData?: Record<string, any>;
-  /** 信頼度 */
-  confidence: number;
 }
 
 // =============================================================================
@@ -76,12 +53,12 @@ interface UdonLogData {
  * MessageProcessor - ログメッセージ解析エンジン
  */
 export class MessageProcessor {
-  private parsers: Map<LogSource, LogParser[]>;
+  private parsers: LogParser[];
   private logger = logMessageProcessor;
   private logWatcher?: any; // VRChatLogWatcherの参照（循環参照回避のためany型）
 
   constructor(logWatcher?: any) {
-    this.parsers = new Map();
+    this.parsers = [];
     this.logWatcher = logWatcher;
     this.initializeDefaultParsers();
   }
@@ -128,11 +105,8 @@ export class MessageProcessor {
         return null;
       }
 
-      // 2. ソース別特殊解析
-      const detailedParsed = this.parseWithSpecializedParsers(
-        basicParsed.content,
-        basicParsed.estimatedSource
-      );
+      // 2. 特殊パーサーでの解析
+      const detailedParsed = this.parseWithSpecializedParsers(basicParsed.content);
 
       // 3. 構造化メッセージの構築
       const processed = this.buildProcessedMessage(basicParsed, detailedParsed, metadata);
@@ -141,7 +115,6 @@ export class MessageProcessor {
       if (!this.isInQuietModeNow()) {
         this.logger('Successfully processed message', {
           messageId: processed.id,
-          source: processed.source,
           hasParsed: !!processed.parsed
         });
       }
@@ -161,14 +134,9 @@ export class MessageProcessor {
    * @param parser 追加するパーサー
    */
   addParser(parser: LogParser): void {
-    if (!this.parsers.has(parser.targetSource)) {
-      this.parsers.set(parser.targetSource, []);
-    }
-    
-    this.parsers.get(parser.targetSource)!.push(parser);
+    this.parsers.push(parser);
     this.logger('Parser added', { 
-      parserName: parser.name, 
-      targetSource: parser.targetSource 
+      parserName: parser.name
     });
   }
 
@@ -177,16 +145,8 @@ export class MessageProcessor {
    * 
    * @returns パーサー情報の配列
    */
-  getRegisteredParsers(): Array<{ name: string; source: LogSource }> {
-    const result: Array<{ name: string; source: LogSource }> = [];
-    
-    this.parsers.forEach((parsers, source) => {
-      parsers.forEach(parser => {
-        result.push({ name: parser.name, source });
-      });
-    });
-    
-    return result;
+  getRegisteredParsers(): Array<{ name: string }> {
+    return this.parsers.map(parser => ({ name: parser.name }));
   }
 
   // =========================================================================
@@ -206,11 +166,6 @@ export class MessageProcessor {
         // 標準形式: "2025.6.30 15:30:15 Log - Content"
         regex: /^(\d{4}\.\d{1,2}\.\d{1,2} \d{2}:\d{2}:\d{2})\s+(Log|Warning|Error|Exception)\s*-\s*(.+)$/,
         handler: this.parseStandardFormat.bind(this)
-      },
-      {
-        // Udon形式: "[UdonBehaviour] Content"
-        regex: /^\[UdonBehaviour\]\s*(.+)$/,
-        handler: this.parseUdonFormat.bind(this)
       },
       {
         // その他のVRChatログ形式
@@ -248,22 +203,7 @@ export class MessageProcessor {
     return {
       timestamp: this.parseTimestamp(timestampStr),
       level: this.parseLogLevel(levelStr),
-      content: content.trim(),
-      estimatedSource: this.estimateSource(content)
-    };
-  }
-
-  /**
-   * Udonログ形式の処理
-   */
-  private parseUdonFormat(match: RegExpMatchArray, line: string): BasicLogData {
-    const [, content] = match;
-    
-    return {
-      timestamp: new Date(), // Udonログは通常タイムスタンプなし
-      level: LogLevel.INFO,
-      content: content.trim(),
-      estimatedSource: LogSource.UDON
+      content: content.trim()
     };
   }
 
@@ -276,8 +216,7 @@ export class MessageProcessor {
     return {
       timestamp: this.parseTimestamp(timestampStr),
       level: LogLevel.INFO,
-      content: content.trim(),
-      estimatedSource: this.estimateSource(content)
+      content: content.trim()
     };
   }
 
@@ -288,8 +227,7 @@ export class MessageProcessor {
     return {
       timestamp: new Date(),
       level: LogLevel.INFO,
-      content: line.trim(),
-      estimatedSource: LogSource.OTHER
+      content: line.trim()
     };
   }
 
@@ -298,29 +236,27 @@ export class MessageProcessor {
   // =========================================================================
 
   /**
-   * ソース別特殊パーサーでの解析
+   * 特殊パーサーでの解析
    * 
    * @param content ログ内容
-   * @param source 推定ソース
    * @returns 解析済みデータ または null
    */
-  private parseWithSpecializedParsers(content: string, source: LogSource): ParsedLogData | null {
-    const parsers = this.parsers.get(source) || [];
-    
-    for (const parser of parsers) {
-      if (parser.canParse(content)) {
+  private parseWithSpecializedParsers(content: string): ParsedLogData | null {
+    // VRChatの特定イベント（プレイヤー参加、退出、ワールド変更）のみを解析
+    for (const parser of this.parsers) {
+      if (parser.name === 'VRChatLogParser' && parser.canParse(content)) {
         try {
           const result = parser.parse(content);
           if (result) {
-            this.logger('Specialized parser succeeded', { 
+            this.logger('VRChat event parser succeeded', { 
               parserName: parser.name,
-              resultType: result.type 
+              resultType: result.type
             });
             return result;
           }
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-          this.logger('Specialized parser failed', { 
+          this.logger('VRChat event parser failed', { 
             parserName: parser.name,
             error: errorMessage 
           });
@@ -329,7 +265,11 @@ export class MessageProcessor {
       }
     }
 
-    return null;
+    // フォールバック: 'other'タイプで処理
+    return {
+      type: 'other',
+      data: { content }
+    };
   }
 
   /**
@@ -358,7 +298,6 @@ export class MessageProcessor {
     const processed: ProcessedMessage = {
       id: this.generateMessageId(),
       raw: rawMessage,
-      source: basic.estimatedSource,
       parsed: detailed || undefined,
       tags: this.generateTags(basic, detailed),
       processedAt: new Date()
@@ -414,28 +353,6 @@ export class MessageProcessor {
   }
 
   /**
-   * ログソースの推定
-   * 
-   * @param content ログ内容
-   * @returns 推定ソース
-   */
-  private estimateSource(content: string): LogSource {
-    const patterns = [
-      { regex: /\[UdonBehaviour\]|\[Udon\]/i, source: LogSource.UDON },
-      { regex: /\[Network\]|\[Networking\]/i, source: LogSource.NETWORK },
-      { regex: /VRChat|VRC/i, source: LogSource.VRCHAT }
-    ];
-
-    for (const pattern of patterns) {
-      if (pattern.regex.test(content)) {
-        return pattern.source;
-      }
-    }
-
-    return LogSource.OTHER;
-  }
-
-  /**
    * フィルタリング用タグの生成
    * 
    * @param basic 基本解析結果
@@ -448,15 +365,9 @@ export class MessageProcessor {
     // レベルタグ
     tags.push(`level:${basic.level}`);
     
-    // ソースタグ
-    tags.push(`source:${basic.estimatedSource}`);
-    
     // 詳細解析結果のタグ
     if (detailed) {
       tags.push(`type:${detailed.type}`);
-      if (detailed.confidence > 0.8) {
-        tags.push('high-confidence');
-      }
     }
 
     return tags;
@@ -480,10 +391,9 @@ export class MessageProcessor {
    * デフォルトパーサーの初期化
    */
   private initializeDefaultParsers(): void {
-    // Udonパーサーの追加
-    this.addParser(new UdonLogParser());
+    // VRChat特定パーサーの追加（プレイヤー参加、退出、ワールド変更のみ）
+    this.addParser(new VRChatLogParser());
     
-    // その他のデフォルトパーサーは将来追加予定
     this.logger('Default parsers initialized', { 
       parserCount: this.getRegisteredParsers().length 
     });
@@ -491,43 +401,39 @@ export class MessageProcessor {
 }
 
 // =============================================================================
-// デフォルトパーサー実装
+// VRChatログパーサー実装
 // =============================================================================
 
 /**
- * UdonLogParser - Udon専用パーサー
+ * VRChatLogParser - VRChat特定メッセージパーサー
  */
-class UdonLogParser implements LogParser {
-  readonly name = 'UdonLogParser';
-  readonly targetSource = LogSource.UDON;
+class VRChatLogParser implements LogParser {
+  readonly name = 'VRChatLogParser';
 
   /**
-   * Udonログの解析パターン
+   * VRChatログの解析パターン
    */
   private patterns = [
     {
-      name: 'json_data',
-      // "EventName: {json}" - JSON形式を最優先で処理
-      regex: /^(.+?):\s*(\{.+\})$/,
-      handler: this.parseJsonEvent.bind(this)
+      name: 'world_change',
+      // ワールド変化: "Debug - [Behaviour] Joining wrld_{ワールドID}[:インスタンス番号]~private(usr_{ユーザーID})[~canRequestInvite]~region({サーバー国タイプ})"
+      // ログレベルプレフィックス（Debug -、Log -、Warning -など）を考慮
+      regex: /^(?:Debug|Log|Warning|Error)\s*-\s*\[Behaviour\]\s+Joining\s+(wrld_[a-zA-Z0-9_-]+)(?::(\d+))?~private\((usr_[a-zA-Z0-9_-]+)\)(?:~canRequestInvite)?~region\(([a-z]+)\)$|^\[Behaviour\]\s+Joining\s+(wrld_[a-zA-Z0-9_-]+)(?::(\d+))?~private\((usr_[a-zA-Z0-9_-]+)\)(?:~canRequestInvite)?~region\(([a-z]+)\)$/,
+      handler: this.parseWorldChange.bind(this)
     },
     {
-      name: 'object_event',
-      // "ObjectName: EventType - Data"
-      regex: /^(.+?):\s*(.+?)\s*-\s*(.+)$/,
-      handler: this.parseObjectEvent.bind(this)
+      name: 'player_join',
+      // プレイヤー入場: "Debug - [Behaviour] OnPlayerJoined {ユーザー名} (usr_{ユーザーID})"
+      // ログレベルプレフィックス（Debug -、Log -、Warning -など）を考慮
+      regex: /^(?:Debug|Log|Warning|Error)\s*-\s*\[Behaviour\]\s+OnPlayerJoined\s+(.+?)\s+\((usr_[a-zA-Z0-9_-]+)\)$|^\[Behaviour\]\s+OnPlayerJoined\s+(.+?)\s+\((usr_[a-zA-Z0-9_-]+)\)$/,
+      handler: this.parsePlayerJoin.bind(this)
     },
     {
-      name: 'method_call',
-      // "ObjectName.MethodName(params)"
-      regex: /^(.+?)\.(.+?)\((.+?)\)$/,
-      handler: this.parseMethodCall.bind(this)
-    },
-    {
-      name: 'simple_event',
-      // "ObjectName: Data"
-      regex: /^(.+?):\s*(.+)$/,
-      handler: this.parseSimpleEvent.bind(this)
+      name: 'player_leave',
+      // プレイヤー退場: "Debug - [Behaviour] OnPlayerLeft {ユーザー名} (usr_{ユーザーID})"
+      // ログレベルプレフィックス（Debug -、Log -、Warning -など）を考慮
+      regex: /^(?:Debug|Log|Warning|Error)\s*-\s*\[Behaviour\]\s+OnPlayerLeft\s+(.+?)\s+\((usr_[a-zA-Z0-9_-]+)\)$|^\[Behaviour\]\s+OnPlayerLeft\s+(.+?)\s+\((usr_[a-zA-Z0-9_-]+)\)$/,
+      handler: this.parsePlayerLeave.bind(this)
     }
   ];
 
@@ -540,11 +446,10 @@ class UdonLogParser implements LogParser {
       const match = content.match(pattern.regex);
       if (match) {
         try {
-          const udonData = pattern.handler(match);
+          const result = pattern.handler(match);
           return {
-            type: 'udon_event',
-            data: udonData,
-            confidence: 0.9
+            type: result.type,
+            data: result.data
           };
         } catch (error) {
           continue; // 次のパターンを試行
@@ -556,144 +461,70 @@ class UdonLogParser implements LogParser {
   }
 
   /**
-   * オブジェクトイベントの解析
+   * ワールド変化の解析
    */
-  private parseObjectEvent(match: RegExpMatchArray): UdonLogData {
-    const [, objectName, eventType, eventData] = match;
+  private parseWorldChange(match: RegExpMatchArray): { type: string; data: Record<string, any> } {
+    // ログレベルプレフィックスありとなしの両方に対応
+    // マッチグループ: [full, worldId1, instance1, userId1, region1, worldId2, instance2, userId2, region2]
+    const worldId = match[1] || match[5];
+    const instance = match[2] || match[6];
+    const userId = match[3] || match[7];
+    const region = match[4] || match[8];
+    
+    const data: Record<string, any> = {
+      worldId: worldId,
+      userId: userId,
+      region: region,
+      timestamp: Date.now()
+    };
+
+    // インスタンス番号が存在する場合は追加
+    if (instance) {
+      data.instance = parseInt(instance);
+    }
     
     return {
-      objectName: objectName.trim(),
-      eventType: eventType.trim(),
-      customData: this.parseEventData(eventData.trim()),
-      confidence: 0.9
+      type: 'world_change',
+      data: data
     };
   }
 
   /**
-   * メソッド呼び出しの解析
+   * プレイヤー入場の解析
    */
-  private parseMethodCall(match: RegExpMatchArray): UdonLogData {
-    const [, objectName, methodName, paramString] = match;
+  private parsePlayerJoin(match: RegExpMatchArray): { type: string; data: Record<string, any> } {
+    // ログレベルプレフィックスありとなしの両方に対応
+    // マッチグループ: [full, userName1, userId1, userName2, userId2]
+    const userName = match[1] || match[3];
+    const userId = match[2] || match[4];
     
     return {
-      objectName: objectName.trim(),
-      methodName: methodName.trim(),
-      parameters: this.parseParameters(paramString.trim()),
-      confidence: 0.9
+      type: 'user_join',
+      data: {
+        userName: userName.trim(),
+        userId: userId,
+        timestamp: Date.now()
+      }
     };
   }
 
   /**
-   * シンプルイベントの解析
+   * プレイヤー退場の解析
    */
-  private parseSimpleEvent(match: RegExpMatchArray): UdonLogData {
-    const [, objectName, data] = match;
+  private parsePlayerLeave(match: RegExpMatchArray): { type: string; data: Record<string, any> } {
+    // ログレベルプレフィックスありとなしの両方に対応
+    // マッチグループ: [full, userName1, userId1, userName2, userId2]
+    const userName = match[1] || match[3];
+    const userId = match[2] || match[4];
     
     return {
-      objectName: objectName.trim(),
-      eventType: 'custom',
-      customData: { value: data.trim() },
-      confidence: 0.7
+      type: 'user_leave',
+      data: {
+        userName: userName.trim(),
+        userId: userId,
+        timestamp: Date.now()
+      }
     };
-  }
-
-  /**
-   * JSONイベントの解析
-   */
-  private parseJsonEvent(match: RegExpMatchArray): UdonLogData {
-    const [, eventName, jsonString] = match;
-    
-    try {
-      const jsonData = JSON.parse(jsonString);
-      return {
-        eventType: eventName.trim(),
-        customData: jsonData,
-        confidence: 0.95
-      };
-    } catch (error) {
-      return {
-        eventType: eventName.trim(),
-        customData: { raw: jsonString },
-        confidence: 0.5
-      };
-    }
-  }
-
-  /**
-   * イベントデータの解析
-   */
-  private parseEventData(dataString: string): Record<string, any> {
-    try {
-      // JSON形式の場合
-      if (dataString.startsWith('{') && dataString.endsWith('}')) {
-        return JSON.parse(dataString);
-      }
-      
-      // キー=値形式の場合
-      if (dataString.includes('=')) {
-        return this.parseKeyValuePairs(dataString);
-      }
-      
-      // プレーンテキストの場合
-      return { value: dataString };
-      
-    } catch (error) {
-      return { value: dataString };
-    }
-  }
-
-  /**
-   * パラメータ文字列の解析
-   */
-  private parseParameters(paramString: string): any[] {
-    try {
-      const params = paramString.split(',').map(p => p.trim());
-      return params.map(param => this.parseValue(param));
-    } catch (error) {
-      return [paramString];
-    }
-  }
-
-  /**
-   * キー=値ペアの解析
-   */
-  private parseKeyValuePairs(input: string): Record<string, any> {
-    const result: Record<string, any> = {};
-    const pairs = input.split(',').map(p => p.trim());
-    
-    for (const pair of pairs) {
-      const [key, value] = pair.split('=').map(s => s.trim());
-      if (key && value !== undefined) {
-        result[key] = this.parseValue(value);
-      }
-    }
-    
-    return result;
-  }
-
-  /**
-   * 値の型変換
-   */
-  private parseValue(value: string): any {
-    // 数値変換試行
-    if (/^-?\d+$/.test(value)) {
-      return parseInt(value);
-    }
-    if (/^-?\d*\.\d+$/.test(value)) {
-      return parseFloat(value);
-    }
-    
-    // ブール値
-    if (value.toLowerCase() === 'true') return true;
-    if (value.toLowerCase() === 'false') return false;
-    
-    // 文字列（引用符除去）
-    if ((value.startsWith('"') && value.endsWith('"')) ||
-        (value.startsWith("'") && value.endsWith("'"))) {
-      return value.slice(1, -1);
-    }
-    
-    return value;
   }
 }
 

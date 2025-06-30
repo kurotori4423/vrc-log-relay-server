@@ -264,7 +264,7 @@ export interface ProcessedLogMessage extends LogEntry {
  * VRChatログの特殊パース結果
  */
 export interface VRChatLogParsed {
-  type: 'user_join' | 'user_leave' | 'world_change' | 'udon_event' | 'system_message' | 'unknown';
+  type: 'user_join' | 'user_leave' | 'world_change' | 'other';
   data: Record<string, any>;
   confidence: number; // パース信頼度 (0-1)
 }

@@ -99,8 +99,6 @@ export interface ProcessedMessage {
   id: string;
   /** 元の生ログメッセージ */
   raw: RawLogMessage;
-  /** ログソース */
-  source: LogSource;
   /** 解析済みデータ */
   parsed?: ParsedLogData;
   /** フィルタリング用タグ */
@@ -117,8 +115,6 @@ export interface ParsedLogData {
   type: string;
   /** 解析済みデータ */
   data: Record<string, any>;
-  /** 信頼度（0-1） */
-  confidence: number;
 }
 
 /**
