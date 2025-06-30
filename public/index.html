@@ -279,6 +279,35 @@
                     </label>
                 </div>
             </div>
+            <div style="margin-top: 10px;">
+                <h5>📊 ログレベルフィルター</h5>
+                <div style="margin-bottom: 8px;">
+                    <button onclick="toggleAllLogLevelFilters(true)" style="padding: 3px 8px; font-size: 11px; margin-right: 5px;">
+                        ✅ 全選択
+                    </button>
+                    <button onclick="toggleAllLogLevelFilters(false)" style="padding: 3px 8px; font-size: 11px;">
+                        ❌ 全解除
+                    </button>
+                </div>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <label style="display: flex; align-items: center; gap: 5px;">
+                        <input type="checkbox" id="filterLevelInfo" checked onchange="toggleFilter()"> 
+                        ℹ️ Info
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 5px;">
+                        <input type="checkbox" id="filterLevelWarning" checked onchange="toggleFilter()"> 
+                        ⚠️ Warning
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 5px;">
+                        <input type="checkbox" id="filterLevelError" checked onchange="toggleFilter()"> 
+                        ❌ Error
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 5px;">
+                        <input type="checkbox" id="filterLevelOther" checked onchange="toggleFilter()"> 
+                        📝 その他
+                    </label>
+                </div>
+            </div>
             <div style="margin-top: 10px; display: flex; gap: 10px; align-items: center;">
                 <label style="display: flex; align-items: center; gap: 5px;">
                     🔎 キーワードフィルター:
@@ -545,6 +574,13 @@
                     logEntry.setAttribute('data-message-content', message.data.message);
                 }
                 
+                // ログレベルをデータ属性として設定
+                if (message.data.raw && message.data.raw.level) {
+                    logEntry.setAttribute('data-log-level', message.data.raw.level.toLowerCase());
+                } else {
+                    logEntry.setAttribute('data-log-level', 'other');
+                }
+                
                 // パース結果のタイプがある場合はデータ属性に設定
                 // サーバーからのメッセージ構造に対応：message.data.parsed または message.parsed
                 const parsedData = message.data.parsed || message.parsed;
@@ -561,6 +597,9 @@
                         console.log('No parsed type found for message:', message);
                     }
                 }
+            } else {
+                // 非VRChatメッセージの場合はデフォルトのログレベルを設定
+                logEntry.setAttribute('data-log-level', 'other');
             }
             
             // ヘッダー部分（タイムスタンプとタイプ）
@@ -1027,7 +1066,39 @@
                 }
                 
                 // 基本ログフィルターとVRChatログタイプフィルターの両方がONの場合のみ表示
-                return basicLogFilter && specificShow;
+                shouldShow = basicLogFilter && specificShow;
+            }
+            
+            // ログレベルフィルターをチェック（全メッセージ対象）
+            if (shouldShow && element) {
+                const logLevel = element.getAttribute('data-log-level') || 'other';
+                let levelShow = false;
+                
+                switch(logLevel) {
+                    case 'info':
+                        levelShow = document.getElementById('filterLevelInfo').checked;
+                        break;
+                    case 'warning':
+                    case 'warn':
+                        levelShow = document.getElementById('filterLevelWarning').checked;
+                        break;
+                    case 'error':
+                        levelShow = document.getElementById('filterLevelError').checked;
+                        break;
+                    default:
+                        levelShow = document.getElementById('filterLevelOther').checked;
+                        break;
+                }
+                
+                if (debugMode) {
+                    console.log('Log level filter check:', {
+                        logLevel,
+                        levelShow,
+                        finalResult: shouldShow && levelShow
+                    });
+                }
+                
+                shouldShow = shouldShow && levelShow;
             }
             
             if (debugMode) {
@@ -1107,9 +1178,10 @@
             const logEntry = document.createElement('div');
             logEntry.className = 'message';
             logEntry.setAttribute('data-message-type', 'system');
+            logEntry.setAttribute('data-log-level', level);
             
             // フィルター設定をチェック
-            const shouldShow = shouldShowMessage('system') && matchesKeywordFilter(logEntry);
+            const shouldShow = shouldShowMessage('system', logEntry) && matchesKeywordFilter(logEntry);
             if (!shouldShow) {
                 logEntry.style.display = 'none';
             }
@@ -1206,12 +1278,32 @@
             applyFilters();
             addLog('システム', `VRChatログフィルター: ${checked ? '全選択' : '全解除'}`, 'info');
         }
+        
+        function toggleAllLogLevelFilters(checked) {
+            const logLevelFilterIds = [
+                'filterLevelInfo',
+                'filterLevelWarning',
+                'filterLevelError',
+                'filterLevelOther'
+            ];
+            
+            logLevelFilterIds.forEach(id => {
+                const checkbox = document.getElementById(id);
+                if (checkbox) {
+                    checkbox.checked = checked;
+                }
+            });
+            
+            applyFilters();
+            addLog('システム', `ログレベルフィルター: ${checked ? '全選択' : '全解除'}`, 'info');
+        }
 
         function debugFilterElements() {
             const filterIds = [
                 'filterLog', 'filterStatus', 'filterSystem', 'filterTest',
                 'filterUserJoin', 'filterUserLeave', 'filterWorldChange', 
-                'filterUdonEvent', 'filterUnknown'
+                'filterUdonEvent', 'filterUnknown',
+                'filterLevelInfo', 'filterLevelWarning', 'filterLevelError', 'filterLevelOther'
             ];
             
             console.log('=== フィルタ要素デバッグ ===');
